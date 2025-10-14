@@ -1,13 +1,51 @@
-# 🏗 Scaffold-ETH 2
+# 🔗 HabitChain - Stake on Yourself
+
+**Build habits with real skin in the game** 💪
+
+> A DeFi-powered habit tracking protocol built on Base with Aave V3 yield integration.
+
+HabitChain turns self-discipline into financial commitment. Users stake ETH on their habits, earn yield through Aave, and either reclaim their stake + yield (success) or lose it to the treasury (failure).
+
+---
+
+## 📚 Documentation
+
+- **[HABITCHAIN_README.md](./HABITCHAIN_README.md)** - Complete product documentation
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guide for Base networks
+- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
+- **[HIGH_LEVEL_VIEW.md](./HIGH_LEVEL_VIEW.md)** - Product vision and roadmap
+- **[LIQUIDITY.md](./LIQUIDITY.md)** - Aave V3 integration strategy
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+yarn install
+
+# Start local blockchain (forked Base)
+yarn chain
+
+# Deploy contracts (in new terminal)
+yarn deploy
+
+# Start frontend (in new terminal)
+yarn start
+```
+
+Visit `http://localhost:3000` to use HabitChain!
+
+---
+
+## 🏗 Built With Scaffold-ETH 2
 
 <h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
+  <a href="https://docs.scaffoldeth.io">Scaffold-ETH Docs</a> |
+  <a href="https://scaffoldeth.io">Scaffold-ETH Website</a>
 </h4>
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
-
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+⚙️ Tech Stack: NextJS, RainbowKit, Foundry, Wagmi, Viem, TypeScript, OnChainKit
 
 - ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
 - 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
