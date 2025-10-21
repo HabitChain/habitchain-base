@@ -249,8 +249,8 @@ contract HabitChain {
         for (uint256 habitId = 1; habitId < nextHabitId; habitId++) {
             Habit storage habit = habits[habitId];
 
-            // Skip if habit doesn't exist, is inactive, or already settled
-            if (habit.id == 0 || !habit.isActive || habit.isSettled) {
+            // Skip if habit doesn't exist, is inactive, already settled, or has been slashed (0 stake)
+            if (habit.id == 0 || !habit.isActive || habit.isSettled || habit.stakeAmount == 0) {
                 continue;
             }
 
@@ -356,6 +356,11 @@ contract HabitChain {
     function _calculateHabitValue(uint256 habitId) internal view returns (uint256 currentValue, uint256 yieldEarned) {
         Habit storage habit = habits[habitId];
         
+        // Safety check: if habit has been slashed (liquidityIndex = 0), return 0
+        if (habit.liquidityIndex == 0 || habit.aTokenAmount == 0) {
+            return (0, 0);
+        }
+        
         // Get current liquidity index
         uint256 currentLiquidityIndex = aavePool.getReserveNormalizedIncome(address(weth));
         
@@ -421,12 +426,14 @@ contract HabitChain {
     /**
      * @notice Get total active habits for a user
      * @param user Address of the user
-     * @return count Number of active habits
+     * @return count Number of active habits (excludes slashed habits with 0 stake)
      */
     function getUserActiveHabitsCount(address user) external view returns (uint256 count) {
         uint256[] memory habitIds = userHabits[user];
         for (uint256 i = 0; i < habitIds.length; i++) {
-            if (habits[habitIds[i]].isActive) {
+            Habit memory habit = habits[habitIds[i]];
+            // Only count habits that are active AND have stake (not slashed)
+            if (habit.isActive && habit.stakeAmount > 0) {
                 count++;
             }
         }

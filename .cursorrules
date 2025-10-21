@@ -5,3 +5,4 @@
 - When updating a smart contract code, remember to generate the ABI and update the FE accordingly.
 - Don't write .md files unless asked to.
 - If updating a smart contract, in the end ask to deploy the contract with `npm run redeploy:all`
+- When asked to test the happy path, refer to TESTING_HAPPY_PATH.md and test it in the browser.
