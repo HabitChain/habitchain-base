@@ -17,8 +17,9 @@ contract HabitChain {
         uint256 id;
         address user;
         string name;
-        uint256 stakeAmount;
-        uint256 aTokenAmount; // Amount of aWETH representing stake + yield
+        uint256 stakeAmount; // Original stake amount (in ETH/WETH terms)
+        uint256 aTokenAmount; // Amount of aWETH at time of creation
+        uint256 liquidityIndex; // Liquidity index at time of creation (for yield calculation)
         uint256 createdAt;
         uint256 lastCheckIn;
         uint256 checkInCount;
@@ -32,11 +33,11 @@ contract HabitChain {
     IAToken public immutable aWeth;
     address public immutable treasury;
 
-    mapping(address => uint256) public userBalances;
+    mapping(address => uint256) public userBalances; // Tracks aWETH balance (keeps earning yield in Aave)
     mapping(uint256 => Habit) public habits;
     mapping(address => uint256[]) public userHabits;
     uint256 public nextHabitId;
-    uint256 public treasuryBalance;
+    uint256 public treasuryBalance; // Tracks aWETH balance (keeps earning yield in Aave)
 
     // Constants
     uint256 public constant MIN_STAKE = 0.001 ether;
@@ -62,6 +63,7 @@ contract HabitChain {
         uint256 timestamp
     );
     event TreasuryFunded(uint256 indexed habitId, uint256 amount);
+    event GlobalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
 
     // Errors
     error InsufficientBalance();
@@ -94,56 +96,79 @@ contract HabitChain {
     }
 
     /**
-     * @notice Deposit ETH into the protocol
+     * @notice Deposit ETH into the protocol (automatically supplied to Aave)
+     * @dev ETH is wrapped to WETH, supplied to Aave, and aWETH balance is credited
      */
     function deposit() external payable {
         require(msg.value > 0, "Must deposit more than 0");
-        userBalances[msg.sender] += msg.value;
+        
+        // Wrap ETH to WETH
+        weth.deposit{ value: msg.value }();
+        
+        // Approve Aave Pool to spend WETH
+        weth.approve(address(aavePool), msg.value);
+        
+        // Get aWETH balance before supply
+        uint256 aTokenBefore = aWeth.balanceOf(address(this));
+        
+        // Supply WETH to Aave
+        aavePool.supply(address(weth), msg.value, address(this), 0);
+        
+        // Get aWETH balance after supply
+        uint256 aTokenAfter = aWeth.balanceOf(address(this));
+        uint256 aTokenReceived = aTokenAfter - aTokenBefore;
+        
+        // Credit user's aWETH balance
+        userBalances[msg.sender] += aTokenReceived;
+        
         emit Deposited(msg.sender, msg.value);
     }
 
     /**
      * @notice Withdraw available ETH from the protocol
-     * @param amount Amount to withdraw
+     * @param amount Amount of ETH to withdraw (will burn equivalent aWETH)
+     * @dev Withdraws from Aave, unwraps WETH to ETH, and sends to user
      */
     function withdraw(uint256 amount) external {
+        require(amount > 0, "Must withdraw more than 0");
+        
+        // Note: userBalances tracks aWETH, but we need to calculate how much aWETH to burn
+        // For simplicity, we assume 1:1 ratio (in reality aWETH grows over time)
+        // A more sophisticated implementation would calculate the exchange rate
+        
         if (userBalances[msg.sender] < amount) revert InsufficientBalance();
-
+        
+        // Deduct aWETH balance
         userBalances[msg.sender] -= amount;
-        (bool success,) = msg.sender.call{ value: amount }("");
+        
+        // Withdraw from Aave (this burns aWETH and returns WETH)
+        uint256 wethReceived = aavePool.withdraw(address(weth), amount, address(this));
+        
+        // Unwrap WETH to ETH
+        weth.withdraw(wethReceived);
+        
+        // Send ETH to user
+        (bool success,) = msg.sender.call{ value: wethReceived }("");
         require(success, "ETH transfer failed");
 
-        emit Withdrawn(msg.sender, amount);
+        emit Withdrawn(msg.sender, wethReceived);
     }
 
     /**
      * @notice Create a new habit with a stake
      * @param name Name of the habit
-     * @param stakeAmount Amount of ETH to stake
+     * @param stakeAmount Amount of aWETH to stake from user's balance
      */
     function createHabit(string calldata name, uint256 stakeAmount) external returns (uint256) {
         if (bytes(name).length == 0) revert EmptyHabitName();
         if (stakeAmount < MIN_STAKE) revert InsufficientStake();
         if (userBalances[msg.sender] < stakeAmount) revert InsufficientBalance();
 
-        // Deduct from user balance
+        // Deduct aWETH from user balance (funds stay in Aave)
         userBalances[msg.sender] -= stakeAmount;
 
-        // Wrap ETH to WETH
-        weth.deposit{ value: stakeAmount }();
-
-        // Approve Aave Pool to spend WETH
-        weth.approve(address(aavePool), stakeAmount);
-
-        // Get aWETH balance before supply
-        uint256 aTokenBefore = aWeth.balanceOf(address(this));
-
-        // Supply WETH to Aave
-        aavePool.supply(address(weth), stakeAmount, address(this), 0);
-
-        // Get aWETH balance after supply
-        uint256 aTokenAfter = aWeth.balanceOf(address(this));
-        uint256 aTokenReceived = aTokenAfter - aTokenBefore;
+        // Get current liquidity index for yield calculation
+        uint256 currentLiquidityIndex = aavePool.getReserveNormalizedIncome(address(weth));
 
         // Create habit
         uint256 habitId = nextHabitId++;
@@ -152,7 +177,8 @@ contract HabitChain {
             user: msg.sender,
             name: name,
             stakeAmount: stakeAmount,
-            aTokenAmount: aTokenReceived,
+            aTokenAmount: stakeAmount,
+            liquidityIndex: currentLiquidityIndex,
             createdAt: block.timestamp,
             lastCheckIn: 0,
             checkInCount: 0,
@@ -189,6 +215,8 @@ contract HabitChain {
         emit CheckInCompleted(habitId, msg.sender, block.timestamp, habit.checkInCount);
     }
 
+
+
     /**
      * @notice Force settle a habit (testing only - determines success/failure)
      * @param habitId ID of the habit to settle
@@ -202,43 +230,97 @@ contract HabitChain {
         if (habit.isSettled) revert HabitAlreadySettled();
         if (habit.user != msg.sender) revert NotHabitOwner();
 
+        _settleHabit(habitId, success);
+    }
+
+    /**
+     * @notice Settle all active habits (simulates end-of-day settlement)
+     * @dev Iterates through all habits and settles based on check-in status
+     *      Success = checked in within last 24 hours
+     *      Failure = not checked in within last 24 hours
+     */
+    function globalSettle() external {
+        uint256 totalSettled = 0;
+        uint256 successfulHabits = 0;
+        uint256 failedHabits = 0;
+
+        // Iterate through all habit IDs
+        for (uint256 habitId = 1; habitId < nextHabitId; habitId++) {
+            Habit storage habit = habits[habitId];
+
+            // Skip if habit doesn't exist, is inactive, or already settled
+            if (habit.id == 0 || !habit.isActive || habit.isSettled) {
+                continue;
+            }
+
+            // Determine success based on check-in status
+            // Success: checked in within last 24 hours
+            bool success = habit.lastCheckIn > 0 && (block.timestamp - habit.lastCheckIn) < ONE_DAY;
+
+            // Settle the habit
+            _settleHabit(habitId, success);
+
+            totalSettled++;
+            if (success) {
+                successfulHabits++;
+            } else {
+                failedHabits++;
+            }
+        }
+
+        emit GlobalSettlementCompleted(totalSettled, successfulHabits, failedHabits, block.timestamp);
+    }
+
+    /**
+     * @notice Internal function to settle a habit
+     * @param habitId ID of the habit to settle
+     * @param success Whether the habit was completed successfully
+     * @dev Transfers aWETH internally without withdrawing from Aave, keeping funds earning yield
+     */
+    function _settleHabit(uint256 habitId, bool success) internal {
+        Habit storage habit = habits[habitId];
+
         // Mark as settled
         habit.isActive = false;
         habit.isSettled = true;
 
-        // Get the current aToken balance for this habit (includes accrued interest)
-        uint256 currentATokenBalance = aWeth.balanceOf(address(this));
-        uint256 habitATokenShare = habit.aTokenAmount;
-        
-        // For simplicity, if this is the only active position, withdraw it all
-        // Otherwise, calculate proportional withdrawal
-        // Note: In production, a more sophisticated accounting system would be needed
-        uint256 wethReceived;
-        if (currentATokenBalance >= habitATokenShare) {
-            // Withdraw based on original aToken amount received
-            // Aave's withdraw takes the asset amount, and will burn corresponding aTokens
-            wethReceived = aavePool.withdraw(address(weth), habit.stakeAmount, address(this));
-        } else {
-            // Edge case: withdraw whatever we have
-            wethReceived = aavePool.withdraw(address(weth), habit.stakeAmount, address(this));
-        }
-
-        // Unwrap WETH to ETH
-        weth.withdraw(wethReceived);
-
-        // Calculate yield (total received minus original stake)
-        uint256 yieldEarned = wethReceived > habit.stakeAmount ? wethReceived - habit.stakeAmount : 0;
+        // Calculate current value with yield
+        (uint256 currentValue, uint256 yieldEarned) = _calculateHabitValue(habitId);
 
         if (success) {
-            // User gets back stake + yield
-            userBalances[msg.sender] += wethReceived;
-            emit HabitSettled(habitId, msg.sender, true, wethReceived, yieldEarned, block.timestamp);
+            // Transfer aWETH balance to user (funds stay in Aave, keep earning yield)
+            userBalances[habit.user] += currentValue;
+            emit HabitSettled(habitId, habit.user, true, currentValue, yieldEarned, block.timestamp);
         } else {
-            // Stake + yield goes to treasury
-            treasuryBalance += wethReceived;
-            emit TreasuryFunded(habitId, wethReceived);
-            emit HabitSettled(habitId, msg.sender, false, wethReceived, yieldEarned, block.timestamp);
+            // Transfer aWETH balance to treasury (funds stay in Aave, keep earning yield)
+            treasuryBalance += currentValue;
+            emit TreasuryFunded(habitId, currentValue);
+            emit HabitSettled(habitId, habit.user, false, currentValue, yieldEarned, block.timestamp);
         }
+    }
+
+    /**
+     * @notice Calculate the current value of a habit including accrued yield
+     * @param habitId ID of the habit
+     * @return currentValue The current total value (stake + yield)
+     * @return yieldEarned The yield earned since creation
+     * @dev Uses Aave's liquidity index to calculate yield growth
+     */
+    function _calculateHabitValue(uint256 habitId) internal view returns (uint256 currentValue, uint256 yieldEarned) {
+        Habit storage habit = habits[habitId];
+        
+        // Get current liquidity index
+        uint256 currentLiquidityIndex = aavePool.getReserveNormalizedIncome(address(weth));
+        
+        // Calculate current value based on liquidity index growth
+        // Formula: currentValue = (aTokenAmount * currentLiquidityIndex) / initialLiquidityIndex
+        // Note: Aave's liquidity index is in ray (27 decimals), so we need to handle precision
+        currentValue = (habit.aTokenAmount * currentLiquidityIndex) / habit.liquidityIndex;
+        
+        // Calculate yield earned
+        yieldEarned = currentValue > habit.stakeAmount ? currentValue - habit.stakeAmount : 0;
+        
+        return (currentValue, yieldEarned);
     }
 
     /**
@@ -269,17 +351,16 @@ contract HabitChain {
     }
 
     /**
-     * @notice Get current aWETH balance for a habit (including yield)
+     * @notice Get current value for a habit (including yield)
      * @param habitId ID of the habit
-     * @return Current aWETH balance
+     * @return currentValue Current total value (stake + yield)
+     * @return yieldEarned Yield earned since creation
      */
-    function getHabitCurrentValue(uint256 habitId) external view returns (uint256) {
+    function getHabitCurrentValue(uint256 habitId) external view returns (uint256 currentValue, uint256 yieldEarned) {
         Habit memory habit = habits[habitId];
-        if (habit.id == 0 || habit.isSettled) return 0;
-        // In real scenario, aToken balance grows over time
-        // For this view function, we return the stored aTokenAmount
-        // The actual balance will be higher due to yield
-        return habit.aTokenAmount;
+        if (habit.id == 0 || habit.isSettled) return (0, 0);
+        
+        return _calculateHabitValue(habitId);
     }
 
     /**
@@ -306,14 +387,25 @@ contract HabitChain {
 
     /**
      * @notice Withdraw funds from treasury (only treasury address)
-     * @param amount Amount to withdraw
+     * @param amount Amount of ETH to withdraw (will burn equivalent aWETH)
+     * @dev Withdraws from Aave, unwraps WETH to ETH, and sends to treasury
      */
     function withdrawTreasury(uint256 amount) external {
         require(msg.sender == treasury, "Only treasury can withdraw");
+        require(amount > 0, "Must withdraw more than 0");
         require(treasuryBalance >= amount, "Insufficient treasury balance");
 
+        // Deduct aWETH balance
         treasuryBalance -= amount;
-        (bool success,) = treasury.call{ value: amount }("");
+        
+        // Withdraw from Aave (this burns aWETH and returns WETH)
+        uint256 wethReceived = aavePool.withdraw(address(weth), amount, address(this));
+        
+        // Unwrap WETH to ETH
+        weth.withdraw(wethReceived);
+        
+        // Send ETH to treasury
+        (bool success,) = treasury.call{ value: wethReceived }("");
         require(success, "ETH transfer failed");
     }
 

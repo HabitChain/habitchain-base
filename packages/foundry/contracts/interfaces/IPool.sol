@@ -24,5 +24,12 @@ interface IPool {
      * @return The final amount withdrawn
      */
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
+
+    /**
+     * @notice Returns the normalized income per unit of asset
+     * @param asset The address of the underlying asset
+     * @return The reserve's normalized income (liquidity index)
+     */
+    function getReserveNormalizedIncome(address asset) external view returns (uint256);
 }
 

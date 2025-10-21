@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     HabitChain: {
-      address: "0x73a184038001a06c3579e0ee1afc68f78113ec72",
+      address: "0xf3390f611bf36ca72a416211f033947129a485e2",
       abi: [
         {
           type: "constructor",
@@ -195,6 +195,11 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
+                  name: "liquidityIndex",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
                   name: "createdAt",
                   type: "uint256",
                   internalType: "uint256",
@@ -236,7 +241,12 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "",
+              name: "currentValue",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "yieldEarned",
               type: "uint256",
               internalType: "uint256",
             },
@@ -315,6 +325,13 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "globalSettle",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "habits",
           inputs: [
             {
@@ -346,6 +363,11 @@ const deployedContracts = {
             },
             {
               name: "aTokenAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "liquidityIndex",
               type: "uint256",
               internalType: "uint256",
             },
@@ -550,6 +572,37 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "GlobalSettlementCompleted",
+          inputs: [
+            {
+              name: "totalSettled",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "successfulHabits",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "failedHabits",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "timestamp",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "HabitCreated",
           inputs: [
             {
@@ -708,7 +761,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 0,
+      deployedOnBlock: 37106108,
     },
   },
 } as const;
