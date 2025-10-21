@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     HabitChain: {
-      address: "0xc7d1c7c8f098786311b6db73f6d828ba87149ab3",
+      address: "0xc970d1dcddfdbb57b4cba0b7985be3128046d71e",
       abi: [
         {
           type: "constructor",
@@ -414,6 +414,24 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "refundHabit",
+          inputs: [
+            {
+              name: "habitId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "stakeAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "treasury",
           inputs: [],
           outputs: [
@@ -640,6 +658,37 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "HabitRefunded",
+          inputs: [
+            {
+              name: "habitId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "user",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "stakeAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "timestamp",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "HabitSettled",
           inputs: [
             {
@@ -746,6 +795,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "HabitNotSlashed",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "InsufficientBalance",
           inputs: [],
         },
@@ -761,7 +815,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 37146531,
+      deployedOnBlock: 37146537,
     },
   },
 } as const;

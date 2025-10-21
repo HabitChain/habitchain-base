@@ -62,6 +62,7 @@ contract HabitChain {
         uint256 yieldEarned,
         uint256 timestamp
     );
+    event HabitRefunded(uint256 indexed habitId, address indexed user, uint256 stakeAmount, uint256 timestamp);
     event TreasuryFunded(uint256 indexed habitId, uint256 amount);
     event GlobalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
 
@@ -74,6 +75,7 @@ contract HabitChain {
     error NotHabitOwner();
     error AlreadyCheckedInToday();
     error EmptyHabitName();
+    error HabitNotSlashed();
 
     /**
      * @notice Constructor to initialize HabitChain with Aave integration
@@ -215,7 +217,37 @@ contract HabitChain {
         emit CheckInCompleted(habitId, msg.sender, block.timestamp, habit.checkInCount);
     }
 
+    /**
+     * @notice Refund a slashed habit by restaking
+     * @param habitId ID of the habit to refund
+     * @param stakeAmount Amount of aWETH to restake from user's balance
+     */
+    function refundHabit(uint256 habitId, uint256 stakeAmount) external {
+        Habit storage habit = habits[habitId];
 
+        if (habit.id == 0) revert HabitNotFound();
+        if (!habit.isActive) revert HabitNotActive();
+        if (habit.user != msg.sender) revert NotHabitOwner();
+        if (habit.stakeAmount > 0) revert HabitNotSlashed();
+        if (stakeAmount < MIN_STAKE) revert InsufficientStake();
+        if (userBalances[msg.sender] < stakeAmount) revert InsufficientBalance();
+
+        // Deduct aWETH from user balance (funds stay in Aave)
+        userBalances[msg.sender] -= stakeAmount;
+
+        // Get current liquidity index for yield calculation
+        uint256 currentLiquidityIndex = aavePool.getReserveNormalizedIncome(address(weth));
+
+        // Update habit with new stake
+        habit.stakeAmount = stakeAmount;
+        habit.aTokenAmount = stakeAmount;
+        habit.liquidityIndex = currentLiquidityIndex;
+        habit.lastCheckIn = 0;
+        habit.checkInCount = 0;
+        // Habit remains active (isActive stays true)
+
+        emit HabitRefunded(habitId, msg.sender, stakeAmount, block.timestamp);
+    }
 
     /**
      * @notice Force settle a habit (testing only - determines success/failure)

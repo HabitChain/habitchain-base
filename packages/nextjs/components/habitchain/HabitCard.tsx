@@ -43,8 +43,8 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
 
     try {
       await writeHabitChainAsync({
-        functionName: "createHabit",
-        args: [habit?.name || "", parseEther(refundAmount)],
+        functionName: "refundHabit",
+        args: [habitId, parseEther(refundAmount)],
       });
       notification.success("Habit refunded successfully!");
       setIsRefundModalOpen(false);

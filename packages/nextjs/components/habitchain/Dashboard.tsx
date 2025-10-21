@@ -37,7 +37,7 @@ export const Dashboard = () => {
     args: [connectedAddress],
   });
 
-  // Read active habits count
+  // Read active habits count (excludes slashed habits)
   const { data: activeHabitsCount } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getUserActiveHabitsCount",
