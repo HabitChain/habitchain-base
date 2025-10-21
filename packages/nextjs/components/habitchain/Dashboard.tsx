@@ -4,17 +4,24 @@ import { useState } from "react";
 import { formatEther } from "viem";
 import { useAccount } from "wagmi";
 import { Address } from "~~/components/scaffold-eth";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { CreateHabitModal } from "./CreateHabitModal";
 import { DepositModal } from "./DepositModal";
 import { WithdrawModal } from "./WithdrawModal";
 import { HabitCard } from "./HabitCard";
+import { notification } from "~~/utils/scaffold-eth";
 
 export const Dashboard = () => {
   const { address: connectedAddress } = useAccount();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+
+  // Write contract hook for globalSettle
+  const { writeContractAsync: writeHabitChainAsync } = useScaffoldWriteContract({
+    contractName: "HabitChain",
+  });
 
   // Read user balance
   const { data: userBalance } = useScaffoldReadContract({
@@ -36,6 +43,26 @@ export const Dashboard = () => {
     functionName: "getUserActiveHabitsCount",
     args: [connectedAddress],
   });
+
+  const handleGlobalSettle = async () => {
+    if (!connectedAddress) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      setIsSettling(true);
+      await writeHabitChainAsync({
+        functionName: "globalSettle",
+      });
+      notification.success("Global settlement completed successfully!");
+    } catch (error) {
+      console.error("Error settling habits:", error);
+      notification.error("Failed to settle habits");
+    } finally {
+      setIsSettling(false);
+    }
+  };
 
   if (!connectedAddress) {
     return (
@@ -87,7 +114,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 mb-8">
+      <div className="flex gap-4 mb-8 flex-wrap">
         <button className="btn btn-success" onClick={() => setIsDepositModalOpen(true)}>
           💰 Deposit ETH
         </button>
@@ -96,6 +123,20 @@ export const Dashboard = () => {
         </button>
         <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
           ➕ Create New Habit
+        </button>
+        <button 
+          className="btn btn-error" 
+          onClick={handleGlobalSettle}
+          disabled={isSettling}
+        >
+          {isSettling ? (
+            <>
+              <span className="loading loading-spinner loading-sm"></span>
+              Settling...
+            </>
+          ) : (
+            "⚖️ Global Settle"
+          )}
         </button>
       </div>
 

@@ -236,8 +236,9 @@ contract HabitChain {
     /**
      * @notice Settle all active habits (simulates end-of-day settlement)
      * @dev Iterates through all habits and settles based on check-in status
-     *      Success = checked in within last 24 hours
-     *      Failure = not checked in within last 24 hours
+     *      Success = checked in within last 24 hours (returns funds to user)
+     *      Failure = not checked in within last 24 hours (sends funds to treasury)
+     *      After settlement, habits reset for the next day
      */
     function globalSettle() external {
         uint256 totalSettled = 0;
@@ -257,8 +258,8 @@ contract HabitChain {
             // Success: checked in within last 24 hours
             bool success = habit.lastCheckIn > 0 && (block.timestamp - habit.lastCheckIn) < ONE_DAY;
 
-            // Settle the habit
-            _settleHabit(habitId, success);
+            // Process daily settlement (distributes funds but keeps habit active for next day)
+            _dailySettleHabit(habitId, success);
 
             totalSettled++;
             if (success) {
@@ -297,6 +298,52 @@ contract HabitChain {
             emit TreasuryFunded(habitId, currentValue);
             emit HabitSettled(habitId, habit.user, false, currentValue, yieldEarned, block.timestamp);
         }
+    }
+
+    /**
+     * @notice Internal function to process daily settlement (simulates day passing)
+     * @param habitId ID of the habit to settle
+     * @param success Whether the habit was completed successfully
+     * @dev Distributes funds based on success/failure but keeps habit active and resets for next day
+     */
+    function _dailySettleHabit(uint256 habitId, bool success) internal {
+        Habit storage habit = habits[habitId];
+
+        // Calculate current value with yield
+        (uint256 currentValue, uint256 yieldEarned) = _calculateHabitValue(habitId);
+
+        if (success) {
+            // User succeeded - return funds and auto-restake for next day
+            // Any yield earned goes to user's available balance
+            if (yieldEarned > 0) {
+                userBalances[habit.user] += yieldEarned;
+            }
+            
+            // Update habit tracking values with current liquidity index for next day
+            uint256 currentLiquidityIndex = aavePool.getReserveNormalizedIncome(address(weth));
+            habit.liquidityIndex = currentLiquidityIndex;
+            // aTokenAmount stays the same (funds stay staked in Aave)
+            // stakeAmount stays the same (same stake requirement for next day)
+            
+            emit HabitSettled(habitId, habit.user, true, currentValue, yieldEarned, block.timestamp);
+        } else {
+            // User failed - transfer entire balance to treasury, habit needs to be restaked
+            treasuryBalance += currentValue;
+            emit TreasuryFunded(habitId, currentValue);
+            emit HabitSettled(habitId, habit.user, false, currentValue, yieldEarned, block.timestamp);
+            
+            // Habit becomes unfunded but stays active
+            habit.aTokenAmount = 0;
+            habit.stakeAmount = 0;
+            habit.liquidityIndex = 0;
+            // User needs to create a new habit or manually restake
+        }
+
+        // Reset check-in tracking for next day
+        habit.lastCheckIn = 0;
+        habit.checkInCount = 0;
+        // Habit stays active (isActive remains true)
+        // Habit is not marked as permanently settled (isSettled remains false)
     }
 
     /**
