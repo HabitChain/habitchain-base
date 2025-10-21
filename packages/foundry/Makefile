@@ -13,7 +13,10 @@ chain: setup-anvil-wallet
 
 # Start a fork
 fork: setup-anvil-wallet
-	anvil --fork-url ${FORK_URL} --chain-id 31337
+	anvil --fork-url ${FORK_URL} --chain-id 31337 --host 0.0.0.0
+
+fork-base: setup-anvil-wallet
+	anvil --fork-url https://mainnet.base.org --chain-id 31337 --host 0.0.0.0
 
 # Deploy the contracts
 deploy:
