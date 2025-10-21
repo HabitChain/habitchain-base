@@ -51,6 +51,10 @@ yarn mine
 
 These are useful for testing time-based functionality like habit check-ins and deadline expiration.
 
+### Cursor Slash Commands
+
+- `/happy` - Happy path testing
+
 ---
 
 ## 🏗 Built With Scaffold-ETH 2

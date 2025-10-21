@@ -12,7 +12,7 @@
     "compile": "make compile",
     "deploy": "node scripts-js/parseArgs.js",
     "flatten": "make flatten",
-    "fork": "anvil --fork-url https://mainnet.base.org --chain-id 31337 --host 0.0.0.0",
+    "fork": "anvil --fork-url https://mainnet.base.org --chain-id 31337 --host 0.0.0.0 --balance 10",
     "format": "make format",
     "postinstall": "shx cp -n .env.example .env",
     "lint": "make lint",
