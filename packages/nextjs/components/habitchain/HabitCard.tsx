@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatEther, parseEther } from "viem";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { usePublicClient } from "wagmi";
 import { SettlementButton } from "./SettlementButton";
 import { notification } from "~~/utils/scaffold-eth";
 
@@ -13,6 +14,9 @@ interface HabitCardProps {
 export const HabitCard = ({ habitId }: HabitCardProps) => {
   const [refundAmount, setRefundAmount] = useState("");
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [blockchainTimestamp, setBlockchainTimestamp] = useState<number>(0);
+  
+  const publicClient = usePublicClient();
 
   const { data: habit } = useScaffoldReadContract({
     contractName: "HabitChain",
@@ -23,6 +27,29 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const { writeContractAsync: writeHabitChainAsync, isPending: isCheckingIn } = useScaffoldWriteContract({
     contractName: "HabitChain",
   });
+
+  // Fetch current blockchain timestamp
+  useEffect(() => {
+    const fetchBlockchainTimestamp = async () => {
+      if (!publicClient) return;
+      
+      try {
+        const block = await publicClient.getBlock({ blockTag: 'latest' });
+        setBlockchainTimestamp(Number(block.timestamp));
+      } catch (error) {
+        console.error("Error fetching blockchain timestamp:", error);
+        // Fallback to local time if blockchain fetch fails
+        setBlockchainTimestamp(Math.floor(Date.now() / 1000));
+      }
+    };
+
+    fetchBlockchainTimestamp();
+    
+    // Update timestamp every 30 seconds to keep it relatively current
+    const interval = setInterval(fetchBlockchainTimestamp, 30000);
+    
+    return () => clearInterval(interval);
+  }, [publicClient]);
 
   const handleCheckIn = async () => {
     try {
@@ -70,7 +97,7 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const stakeAmount = formatEther(habit.stakeAmount);
   const checkInCount = habit.checkInCount.toString();
   const lastCheckIn = Number(habit.lastCheckIn);
-  const now = Math.floor(Date.now() / 1000);
+  const now = blockchainTimestamp; // Use blockchain timestamp instead of local time
   const timeSinceLastCheckIn = lastCheckIn > 0 ? now - lastCheckIn : 0;
   const canCheckInAgain = lastCheckIn === 0 || timeSinceLastCheckIn >= 86400; // 24 hours
 

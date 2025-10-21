@@ -242,8 +242,6 @@ contract HabitChain {
         habit.stakeAmount = stakeAmount;
         habit.aTokenAmount = stakeAmount;
         habit.liquidityIndex = currentLiquidityIndex;
-        habit.lastCheckIn = 0;
-        habit.checkInCount = 0;
         // Habit remains active (isActive stays true)
 
         emit HabitRefunded(habitId, msg.sender, stakeAmount, block.timestamp);
@@ -371,9 +369,9 @@ contract HabitChain {
             // User needs to create a new habit or manually restake
         }
 
-        // Reset check-in tracking for next day
-        habit.lastCheckIn = 0;
-        habit.checkInCount = 0;
+        // Don't reset check-in tracking - preserve historical data
+        // habit.lastCheckIn stays as is (shows last time user checked in)
+        // habit.checkInCount stays as is (cumulative count across all settlements)
         // Habit stays active (isActive remains true)
         // Habit is not marked as permanently settled (isSettled remains false)
     }
