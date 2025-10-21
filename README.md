@@ -35,6 +35,21 @@ yarn start
 ```
 
 Visit `http://localhost:3000` to use HabitChain!
+yar
+
+### Time Travel Commands (for testing)
+
+When running the forked local blockchain, you can use these commands to manipulate time:
+
+```bash
+# Skip forward 1 day (86400 seconds) and mine a block
+yarn skip
+
+# Mine a single block (without time advancement)
+yarn mine
+```
+
+These are useful for testing time-based functionality like habit check-ins and deadline expiration.
 
 ---
 
