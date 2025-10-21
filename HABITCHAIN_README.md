@@ -53,17 +53,20 @@ HabitChain is a blockchain dApp that turns self-discipline into a financial comm
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd habitchain-base
 ```
 
 2. Install dependencies:
+
 ```bash
 yarn install
 ```
 
 3. Set up environment variables:
+
 ```bash
 # In packages/nextjs/.env.local
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_onchainkit_api_key
@@ -78,16 +81,19 @@ BASE_RPC_URL=https://mainnet.base.org
 ### Local Development
 
 1. **Start local blockchain** (with Base fork):
+
 ```bash
-yarn chain
+yarn fork
 ```
 
 2. **Deploy contracts** (in a new terminal):
+
 ```bash
 yarn deploy
 ```
 
 3. **Start frontend** (in a new terminal):
+
 ```bash
 yarn start
 ```
@@ -97,12 +103,14 @@ yarn start
 ### Testing
 
 Run all tests with forked Base network:
+
 ```bash
 cd packages/foundry
 BASE_RPC_URL=https://mainnet.base.org forge test -vv
 ```
 
 Run specific test:
+
 ```bash
 BASE_RPC_URL=https://mainnet.base.org forge test --match-test testFullUserFlow -vvv
 ```
@@ -116,6 +124,7 @@ BASE_RPC_URL=https://mainnet.base.org forge test --match-test testFullUserFlow -
 The main protocol contract with the following functionality:
 
 **Core Functions:**
+
 - `deposit()` - Deposit ETH into the protocol
 - `withdraw(uint256 amount)` - Withdraw available ETH
 - `createHabit(string name, uint256 stakeAmount)` - Create a new habit
@@ -123,12 +132,14 @@ The main protocol contract with the following functionality:
 - `forceSettle(uint256 habitId, bool success)` - Settle a habit (testing only)
 
 **Aave Integration:**
+
 - Automatically wraps ETH to WETH
 - Supplies WETH to Aave V3 Pool
 - Tracks aWETH (yield-bearing tokens)
 - Withdraws from Aave on settlement
 
 **View Functions:**
+
 - `getUserBalance(address user)` - Get user's available balance
 - `getHabit(uint256 habitId)` - Get habit details
 - `getUserHabits(address user)` - Get all habit IDs for a user
@@ -158,6 +169,7 @@ components/
 ### Network Configuration
 
 Edit `packages/nextjs/scaffold.config.ts`:
+
 ```typescript
 const scaffoldConfig = {
   targetNetworks: [chains.baseSepolia, chains.base],
@@ -171,11 +183,13 @@ const scaffoldConfig = {
 Configured in `packages/foundry/script/DeployHabitChain.s.sol`:
 
 **Base Mainnet (Chain ID: 8453)**
+
 - Pool: `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5`
 - WETH: `0x4200000000000000000000000000000000000006`
 - aWETH: `0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7`
 
 **Base Sepolia (Chain ID: 84532)**
+
 - Pool: `0x07eA79F68B2B3df564D0A34F8e19D9B1e339814b`
 - WETH: `0x4200000000000000000000000000000000000006`
 - aWETH: `0x9c8Aa5E801E3E072e0eD1BE4A2dE836E20aCABd1`
@@ -196,6 +210,7 @@ Configured in `packages/foundry/script/DeployHabitChain.s.sol`:
 ## 📊 Protocol Statistics
 
 View protocol-wide statistics on the Treasury page:
+
 - Total treasury balance (from slashed habits)
 - Total yield generated across all habits
 - Success rate (% of habits completed successfully)
@@ -206,6 +221,7 @@ View protocol-wide statistics on the Treasury page:
 ### Test Coverage
 
 The test suite covers:
+
 - ✅ Deposit and withdrawal functionality
 - ✅ Habit creation with Aave integration
 - ✅ Daily check-in mechanics with time validation
@@ -226,6 +242,7 @@ BASE_RPC_URL=https://mainnet.base.org forge test
 ```
 
 This ensures:
+
 - Real Aave protocol integration
 - Accurate yield calculations
 - Production-like behavior
@@ -235,17 +252,20 @@ This ensures:
 ### Deploy to Base Sepolia
 
 1. Set up deployer keystore:
+
 ```bash
 cd packages/foundry
 yarn generate
 ```
 
 2. Deploy:
+
 ```bash
 yarn deploy --network baseSepolia
 ```
 
 3. Verify on Basescan:
+
 ```bash
 forge verify-contract <CONTRACT_ADDRESS> HabitChain \
   --chain-id 84532 \
@@ -263,6 +283,7 @@ Follow same steps but use `--network base`
 ## 🔮 Roadmap
 
 ### Current (Prototype)
+
 - ✅ Core habit creation and check-in
 - ✅ Aave V3 yield integration
 - ✅ Basic settlement mechanism
@@ -272,23 +293,27 @@ Follow same steps but use `--network base`
 ### Future Enhancements
 
 **Phase 1: Production**
+
 - [ ] Automated settlement at midnight UTC
 - [ ] Time zone customization
 - [ ] Enhanced yield accounting
 - [ ] Gas optimizations
 
 **Phase 2: Social Features**
+
 - [ ] Group mode (redistribute slashed funds to successful group members)
 - [ ] Leaderboards and achievements
 - [ ] Social sharing and accountability
 
 **Phase 3: Advanced Economics**
+
 - [ ] Sponsored campaigns (companies fund extra rewards)
 - [ ] Protocol-funded campaigns from treasury
 - [ ] Multi-token support (USDC, DAI)
 - [ ] Yield boosters for long-term habits
 
 **Phase 4: Governance**
+
 - [ ] DAO governance for treasury management
 - [ ] Community-voted campaigns
 - [ ] Protocol parameter adjustments
@@ -347,5 +372,4 @@ MIT License - see LICENSE file for details
 
 **Made with ❤️ for the Base Buildathon**
 
-*Stake on yourself. Build better habits. Earn real rewards.*
-
+_Stake on yourself. Build better habits. Earn real rewards._

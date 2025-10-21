@@ -5,6 +5,7 @@ Welcome to HabitChain! This guide will help you get up and running quickly.
 ## What is HabitChain?
 
 HabitChain is a DeFi-powered habit tracking dApp where you:
+
 1. **Deposit ETH** to fund your habits
 2. **Create habits** by staking ETH (your funds earn yield via Aave V3)
 3. **Check in daily** to maintain your commitment
@@ -13,6 +14,7 @@ HabitChain is a DeFi-powered habit tracking dApp where you:
 ## Prerequisites
 
 Make sure you have:
+
 - Node.js v20.18.3 or higher
 - Yarn (v1 or v2+)
 - Git
@@ -35,21 +37,27 @@ yarn install
 Open 3 terminals and run:
 
 **Terminal 1 - Start blockchain:**
+
 ```bash
-yarn chain
+yarn fork
 ```
+
 This starts a local Ethereum network using Anvil.
 
 **Terminal 2 - Deploy contracts:**
+
 ```bash
 yarn deploy
 ```
+
 This deploys the HabitChain contract to your local network.
 
 **Terminal 3 - Start frontend:**
+
 ```bash
 yarn start
 ```
+
 This starts the Next.js frontend at `http://localhost:3000`.
 
 ### Option 2: Forked Base Network (Advanced)
@@ -57,17 +65,20 @@ This starts the Next.js frontend at `http://localhost:3000`.
 To test with real Aave contracts, fork Base mainnet:
 
 **Terminal 1 - Fork Base:**
+
 ```bash
 cd packages/foundry
 anvil --fork-url https://mainnet.base.org --chain-id 31337
 ```
 
 **Terminal 2 - Deploy:**
+
 ```bash
 yarn deploy
 ```
 
 **Terminal 3 - Start frontend:**
+
 ```bash
 yarn start
 ```
@@ -79,6 +90,7 @@ yarn start
 Visit `http://localhost:3000` and click "Connect Wallet" in the top right.
 
 For local testing, use one of Anvil's test accounts:
+
 - Private Key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 - This account has 10,000 ETH for testing
 
@@ -99,6 +111,7 @@ Your deposited ETH is now available to stake on habits!
 4. Click "Create Habit"
 
 Your staked ETH is now:
+
 - Locked in the habit
 - Earning yield via Aave V3
 - Waiting for your daily check-ins
@@ -106,6 +119,7 @@ Your staked ETH is now:
 ### 4. Check In Daily
 
 On your habit card:
+
 1. Click "✓ Check In" once per day
 2. Confirm the transaction
 3. Come back tomorrow to check in again!
@@ -127,6 +141,7 @@ In production, settlement would happen automatically at midnight UTC.
 ### 6. Withdraw Your Rewards
 
 After successful settlement:
+
 1. Click "💸 Withdraw ETH"
 2. Enter amount or click "MAX"
 3. Click "Withdraw"
@@ -135,17 +150,20 @@ After successful settlement:
 ## Exploring the dApp
 
 ### Dashboard (`/`)
+
 - View your available balance
 - See all your habits (active and settled)
 - Deposit, withdraw, and create habits
 
 ### Treasury (`/treasury`)
+
 - View total treasury balance
 - See protocol statistics
 - Check success rate
 - Browse slashed and settled habits
 
 ### Debug Contracts (`/debug`)
+
 - Interact directly with contract functions
 - View contract state
 - Test edge cases
@@ -169,21 +187,25 @@ forge test
 ## Common Issues
 
 ### "Insufficient funds for gas"
+
 - Make sure you're using a funded test account
 - Check you're connected to the local network
 
 ### "Transaction failed"
+
 - Check you have enough deposited balance
 - Ensure you're not trying to check in twice in 24 hours
 - Verify the habit is still active (not settled)
 
 ### Frontend not loading
+
 - Make sure all three terminals are running
 - Check that port 3000 is not in use
 - Try `yarn start --port 3001` to use a different port
 
 ### Contracts not deploying
-- Make sure `yarn chain` is running first
+
+- Make sure `yarn fork` is running first
 - Check for any Foundry errors in the terminal
 - Try `forge clean` and then `yarn deploy` again
 
@@ -248,6 +270,7 @@ yarn lint
 ## Support
 
 Having issues? Check:
+
 1. This guide
 2. [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment issues
 3. [HABITCHAIN_README.md](./HABITCHAIN_README.md) for feature questions
@@ -258,4 +281,3 @@ Having issues? Check:
 **Happy habit building! 🔗💪**
 
 Stake on yourself and build better habits with real consequences and rewards!
-

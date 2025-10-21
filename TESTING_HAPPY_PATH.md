@@ -3,7 +3,8 @@
 ## Test Scenario: Habit Check-in with One Slash
 
 ### Prerequisites
-- Local blockchain running (`yarn chain`)
+
+- Local blockchain running (`yarn fork`)
 - Contract deployed (`yarn deploy`)
 - Frontend running (`yarn start`)
 - Browser wallet connected
@@ -11,11 +12,13 @@
 ### Test Steps
 
 #### 1. Initial Setup
+
 1. Open application at `http://localhost:3000`
 2. Connect wallet
 3. Get funds from faucet if balance < 0.6 ETH
 
 #### 2. Deposit Funds
+
 1. Navigate to deposit section
 2. Enter amount: `0.6` ETH
 3. Click "Deposit"
@@ -23,16 +26,18 @@
 5. **Verify**: Available balance shows 0.6 ETH
 
 #### 3. Create First Habit
+
 1. Click "Create Habit" or navigate to habit creation
 2. Enter habit name: `Run in the morning`
 3. Enter stake amount: `0.2` ETH
 4. Submit transaction
-5. **Verify**: 
+5. **Verify**:
    - Habit appears in habit list
    - Available balance: 0.4 ETH
    - Habit status: Active/Funded
 
 #### 4. Create Second Habit
+
 1. Click "Create Habit"
 2. Enter habit name: `Go to the gym`
 3. Enter stake amount: `0.2` ETH
@@ -43,16 +48,19 @@
    - Both habits status: Active/Funded
 
 #### 5. Perform Check-in on First Habit
+
 1. Locate "Run in the morning" habit
 2. Click "Check-in" button
 3. Confirm transaction
 4. **Verify**: Check-in recorded for habit 1
 
 #### 6. Skip Check-in on Second Habit
+
 1. Do NOT click check-in for "Go to the gym"
 2. **Verify**: No check-in recorded for habit 2
 
 #### 7. Trigger Global Settlement
+
 1. Locate "Global Settlement" or "Daily Settlement" button
 2. Click button
 3. Confirm transaction
@@ -61,6 +69,7 @@
 ### Expected Results
 
 #### Habit 1: "Run in the morning"
+
 - **Status**: Active/Funded (back to initial state)
 - **Stake**: 0.2 ETH (funds retained)
 - **Check-in Status**: Reset (can check-in again tomorrow)
@@ -68,6 +77,7 @@
 - **Action Available**: Can check-in next period
 
 #### Habit 2: "Go to the gym"
+
 - **Status**: Slashed
 - **Stake**: 0 ETH (slashed to treasury)
 - **Check-in Status**: N/A (cannot check-in while slashed)
@@ -80,10 +90,12 @@
   - User can refund using available balance (0.2 ETH)
 
 #### Treasury Balance
+
 - **Expected**: 0.2 ETH (from slashed habit 2)
 - **Verify**: Check treasury page or contract balance
 
 #### User Available Balance
+
 - **Expected**: 0.2 ETH (unchanged from before settlement)
 
 ### Verification Checklist
@@ -101,6 +113,7 @@
 ### Additional Tests to Consider
 
 #### Test Refund Flow
+
 1. Click "Refund Habit" on slashed habit 2
 2. Enter refund amount: `0.2` ETH
 3. Confirm transaction
@@ -110,6 +123,7 @@
    - Habit 2 stake: 0.2 ETH
 
 #### Test Next Day Scenario
+
 1. Wait for next check-in period
 2. Check-in on both habits
 3. Trigger settlement
@@ -133,4 +147,3 @@ User Deposits: 0.6 ETH total
 Habit 1: Active, can check-in tomorrow
 Habit 2: Slashed, needs refund to reactivate
 ```
-

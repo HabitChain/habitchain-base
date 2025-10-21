@@ -25,7 +25,7 @@ HabitChain turns self-discipline into financial commitment. Users stake ETH on t
 yarn install
 
 # Start local blockchain (forked Base)
-yarn chain
+yarn fork
 
 # Deploy contracts (in new terminal)
 yarn deploy
@@ -77,7 +77,7 @@ yarn install
 2. Run a local network in the first terminal:
 
 ```
-yarn chain
+yarn fork
 ```
 
 This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
@@ -103,7 +103,6 @@ Run smart contract test with `yarn foundry:test`
 - Edit your smart contracts in `packages/foundry/contracts`
 - Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
 - Edit your deployment scripts in `packages/foundry/script`
-
 
 ## Documentation
 
