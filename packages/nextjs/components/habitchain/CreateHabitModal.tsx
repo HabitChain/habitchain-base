@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { EtherInput } from "~~/components/scaffold-eth";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
@@ -87,7 +87,7 @@ export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => 
           />
           <label className="label">
             <span className="label-text-alt">
-              Available: {userBalance ? parseFloat(parseEther(userBalance.toString()).toString()) / 1e18 : 0} ETH
+              Available: {userBalance ? formatEther(userBalance) : "0"} ETH
             </span>
             <span className="label-text-alt">Minimum: 0.001 ETH</span>
           </label>
