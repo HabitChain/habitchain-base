@@ -35,7 +35,10 @@ jobs:
         run: corepack enable
 
       - name: Set Yarn version
-        run: corepack prepare yarn@3.2.3 --activate
+        run: corepack use yarn@3.2.3
+
+      - name: Verify Yarn version
+        run: yarn --version
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
