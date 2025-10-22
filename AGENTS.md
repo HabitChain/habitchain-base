@@ -227,3 +227,4 @@ After modifying smart contracts:
 - `TESTING_HAPPY_PATH.md` - Browser testing guide
 
 Please keep this document up to date
+Don't create new .md files unless asked to.

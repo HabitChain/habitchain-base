@@ -34,9 +34,10 @@ contract HabitChainTest is Test {
     event TreasuryFunded(uint256 indexed habitId, uint256 amount);
 
     function setUp() public {
-        // Fork Base mainnet for real Aave integration
+        // Fork Base mainnet for real Aave integration at a specific block for consistency
         string memory rpcUrl = vm.envOr("BASE_RPC_URL", string("https://mainnet.base.org"));
-        baseFork = vm.createFork(rpcUrl);
+        // Using block 20000000 - known good state with Aave liquidity
+        baseFork = vm.createFork(rpcUrl, 20000000);
         vm.selectFork(baseFork);
 
         // Set up test accounts
@@ -395,9 +396,6 @@ contract HabitChainTest is Test {
         habitChain.deposit{ value: 1 ether }();
         uint256 stakeAmount = 0.5 ether;
         uint256 habitId = habitChain.createHabit("Long Term Habit", stakeAmount);
-
-        HabitChain.Habit memory habitBefore = habitChain.getHabit(habitId);
-        uint256 aTokenAmountBefore = habitBefore.aTokenAmount;
 
         // Simulate significant time passing for yield accrual
         // Note: In a real fork, Aave interest accrues, but in fast-forwarded time it may be minimal
