@@ -17,13 +17,17 @@ const nextConfig: NextConfig = {
 };
 
 const isIpfs = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
+const isGitHubPages = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
 
-if (isIpfs) {
+if (isIpfs || isGitHubPages) {
   nextConfig.output = "export";
   nextConfig.trailingSlash = true;
   nextConfig.images = {
     unoptimized: true,
   };
+  if (isGitHubPages) {
+    nextConfig.basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  }
 }
 
 module.exports = nextConfig;

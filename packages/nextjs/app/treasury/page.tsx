@@ -31,6 +31,7 @@ const Treasury: NextPage = () => {
   console.log("Settled Events:", settledEvents);
 
   const successfulHabits = settledEvents?.filter(event => event.args.success) || [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const failedHabits = settledEvents?.filter(event => !event.args.success) || [];
 
   const totalYieldGenerated =
