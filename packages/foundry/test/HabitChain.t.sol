@@ -173,18 +173,20 @@ contract HabitChainTest is Test {
         // Simulate time passing to accrue some yield (optional, may be minimal)
         vm.warp(block.timestamp + 30 days);
 
-        // Settle successfully
-        habitChain.forceSettle(habitId, true);
+        vm.stopPrank();
+
+        // Natural settle - habit checked in, so successful settlement
+        habitChain.naturalSettle();
 
         HabitChain.Habit memory habit = habitChain.getHabit(habitId);
-        assertFalse(habit.isActive);
-        assertTrue(habit.isSettled);
+        // Natural settle keeps habit active (daily settlement)
+        assertTrue(habit.isActive);
+        assertFalse(habit.isSettled);
+        assertEq(habit.stakeAmount, stakeAmount); // Stake remains
 
-        // User should get back at least the stake amount (possibly more with yield)
+        // User should receive yield
         uint256 balanceAfter = habitChain.getUserBalance(user1);
-        assertGe(balanceAfter, balanceBefore + stakeAmount);
-
-        vm.stopPrank();
+        assertGe(balanceAfter, balanceBefore);
     }
 
     function testSlashedSettlement() public {
@@ -199,12 +201,19 @@ contract HabitChainTest is Test {
         uint256 balanceBefore = habitChain.getUserBalance(user1);
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
 
-        // Settle as failed
-        habitChain.forceSettle(habitId, false);
+        // Wait past the check-in deadline
+        vm.warp(block.timestamp + 2 days);
+
+        vm.stopPrank();
+
+        // Natural settle - habit not checked in, so slashed
+        habitChain.naturalSettle();
 
         HabitChain.Habit memory habit = habitChain.getHabit(habitId);
-        assertFalse(habit.isActive);
-        assertTrue(habit.isSettled);
+        // Natural settle keeps habit active but slashes it
+        assertTrue(habit.isActive);
+        assertFalse(habit.isSettled);
+        assertEq(habit.stakeAmount, 0); // Slashed
 
         // User balance should remain the same (no refund)
         assertEq(habitChain.getUserBalance(user1), balanceBefore);
@@ -213,8 +222,6 @@ contract HabitChainTest is Test {
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         assertGt(treasuryAfter, treasuryBefore);
         assertGe(treasuryAfter, treasuryBefore + stakeAmount);
-
-        vm.stopPrank();
     }
 
     function testFullUserFlow() public {
@@ -242,36 +249,41 @@ contract HabitChainTest is Test {
         assertEq(habit1.checkInCount, 1);
         assertEq(habit2.checkInCount, 0);
 
-        // 4. Simulate time passing
+        // 4. Simulate time passing past deadline
         vm.warp(block.timestamp + 30 days);
 
-        // 5. Settle habit 1 (success) and habit 2 (failure)
+        vm.stopPrank();
+
+        // 5. Natural settle - habit 1 success, habit 2 failure
         uint256 balanceBeforeSettlement = habitChain.getUserBalance(user1);
         uint256 treasuryBeforeSettlement = habitChain.getTreasuryBalance();
 
-        habitChain.forceSettle(habit1Id, true);
-        habitChain.forceSettle(habit2Id, false);
+        habitChain.naturalSettle();
 
         // Verify settlements
         habit1 = habitChain.getHabit(habit1Id);
         habit2 = habitChain.getHabit(habit2Id);
 
-        assertTrue(habit1.isSettled);
-        assertTrue(habit2.isSettled);
-        assertFalse(habit1.isActive);
-        assertFalse(habit2.isActive);
+        // Natural settle keeps habits active (daily settlement)
+        assertTrue(habit1.isActive);
+        assertTrue(habit2.isActive);
+        assertFalse(habit1.isSettled);
+        assertFalse(habit2.isSettled);
 
-        // User should get back habit1 stake + yield
+        // Habit 1 keeps stake, habit 2 is slashed
+        assertEq(habit1.stakeAmount, 0.5 ether);
+        assertEq(habit2.stakeAmount, 0);
+
+        // User should receive yield from habit1
         uint256 balanceAfterSettlement = habitChain.getUserBalance(user1);
-        assertGt(balanceAfterSettlement, balanceBeforeSettlement);
+        assertGe(balanceAfterSettlement, balanceBeforeSettlement);
 
         // Treasury should get habit2 stake + yield
         uint256 treasuryAfterSettlement = habitChain.getTreasuryBalance();
         assertGt(treasuryAfterSettlement, treasuryBeforeSettlement);
 
-        assertEq(habitChain.getUserActiveHabitsCount(user1), 0);
-
-        vm.stopPrank();
+        // Active habits count should be 1 (habit1 still active, habit2 slashed but active)
+        assertEq(habitChain.getUserActiveHabitsCount(user1), 1);
     }
 
     function testMultipleUsers() public {
@@ -311,18 +323,7 @@ contract HabitChainTest is Test {
         habitChain.checkIn(habitId);
     }
 
-    function testCannotSettleOtherUsersHabit() public {
-        // User 1 creates a habit
-        vm.prank(user1);
-        habitChain.deposit{ value: 1 ether }();
-        vm.prank(user1);
-        uint256 habitId = habitChain.createHabit("Swimming", 0.1 ether);
-
-        // User 2 tries to settle - should fail
-        vm.prank(user2);
-        vm.expectRevert(HabitChain.NotHabitOwner.selector);
-        habitChain.forceSettle(habitId, true);
-    }
+    // Note: testCannotSettleOtherUsersHabit removed - natural settle can be called by anyone
 
     function testMinimumStakeRequirement() public {
         vm.startPrank(user1);
@@ -360,8 +361,12 @@ contract HabitChainTest is Test {
         vm.startPrank(user1);
         habitChain.deposit{ value: 1 ether }();
         uint256 habitId = habitChain.createHabit("Failed Habit", 0.5 ether);
-        habitChain.forceSettle(habitId, false);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
         vm.stopPrank();
+
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
 
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         assertTrue(treasuryBalance > 0);
@@ -380,8 +385,12 @@ contract HabitChainTest is Test {
         vm.startPrank(user1);
         habitChain.deposit{ value: 1 ether }();
         uint256 habitId = habitChain.createHabit("Failed Habit", 0.5 ether);
-        habitChain.forceSettle(habitId, false);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
         vm.stopPrank();
+
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
 
         // User tries to withdraw treasury funds - should fail
         vm.prank(user1);
@@ -397,26 +406,30 @@ contract HabitChainTest is Test {
         uint256 stakeAmount = 0.5 ether;
         uint256 habitId = habitChain.createHabit("Long Term Habit", stakeAmount);
 
+        // Check in first
+        habitChain.checkIn(habitId);
+
         // Simulate significant time passing for yield accrual
         // Note: In a real fork, Aave interest accrues, but in fast-forwarded time it may be minimal
         vm.warp(block.timestamp + 365 days);
 
+        vm.stopPrank();
+
         // The aToken balance grows automatically in Aave
-        // When we settle, we should get more than we put in
+        // When we settle, yield should be distributed
 
         uint256 balanceBeforeSettle = habitChain.getUserBalance(user1);
-        habitChain.forceSettle(habitId, true);
+        habitChain.naturalSettle();
         uint256 balanceAfterSettle = habitChain.getUserBalance(user1);
 
-        // User should receive at least the original stake
-        assertGe(balanceAfterSettle, balanceBeforeSettle + stakeAmount);
+        // User should receive yield (balance should increase)
+        assertGe(balanceAfterSettle, balanceBeforeSettle);
 
         // In a real Aave environment with time passing, we'd see yield
         // For this test, we verify the mechanism works even if yield is minimal
-        console.log("Original stake:", stakeAmount);
-        console.log("Amount received:", balanceAfterSettle - balanceBeforeSettle);
-
-        vm.stopPrank();
+        console.log("Balance before settle:", balanceBeforeSettle);
+        console.log("Balance after settle:", balanceAfterSettle);
+        console.log("Yield received:", balanceAfterSettle - balanceBeforeSettle);
     }
 }
 

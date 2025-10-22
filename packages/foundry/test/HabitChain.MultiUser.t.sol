@@ -51,25 +51,13 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         habitChain.checkIn(habitId);
     }
 
-    function test_UserCannotSettleOtherUsersHabit() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "User1 Habit", 0.5 ether);
-        
-        // User2 tries to settle user1's habit
-        vm.prank(user2);
-        vm.expectRevert(HabitChain.NotHabitOwner.selector);
-        habitChain.forceSettle(habitId, true);
-        
-        // User3 tries to settle user1's habit
-        vm.prank(user3);
-        vm.expectRevert(HabitChain.NotHabitOwner.selector);
-        habitChain.forceSettle(habitId, false);
-    }
+    // Note: test_UserCannotSettleOtherUsersHabit removed - natural settle can be called by anyone
 
     function test_UserCannotRefundOtherUsersHabit() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "User1 Habit", 0.5 ether);
         
         // Slash the habit
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // User2 tries to refund user1's habit
         vm.startPrank(user2);
@@ -105,7 +93,7 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         vm.stopPrank();
         
         // Global settlement
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Verify User 1: 1 success, 1 failure
         assertEq(getHabit(u1h1).stakeAmount, 0.5 ether, "U1H1 should retain stake");
@@ -142,7 +130,7 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         
@@ -187,7 +175,7 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
         // All fail
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         
@@ -278,7 +266,7 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         assertEq(habitChain.getUserActiveHabitsCount(user1), 3, "User1 should have 3 active");
         
         // Slash all via global settlement
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         assertEq(habitChain.getUserActiveHabitsCount(user1), 0, "User1 should have 0 active (all slashed)");
         
@@ -291,7 +279,7 @@ contract HabitChainMultiUserTest is HabitChainBaseTest {
         habitChain.checkIn(u2h2);
         vm.stopPrank();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         assertEq(habitChain.getUserActiveHabitsCount(user2), 2, "User2 should still have 2 active");
     }

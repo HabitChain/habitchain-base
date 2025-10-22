@@ -23,6 +23,7 @@ contract HabitChain {
         uint256 createdAt;
         uint256 lastCheckIn;
         uint256 checkInCount;
+        uint256 lastSettled; // Last time this habit was settled
         bool isActive;
         bool isSettled;
     }
@@ -41,7 +42,7 @@ contract HabitChain {
 
     // Constants
     uint256 public constant MIN_STAKE = 0.001 ether;
-    uint256 public constant ONE_DAY = 1 days;
+    uint256 public checkInPeriod = 1 days; // Configurable check-in period (default 24 hours)
 
     // Events
     event Deposited(address indexed user, uint256 amount);
@@ -64,7 +65,8 @@ contract HabitChain {
     );
     event HabitRefunded(uint256 indexed habitId, address indexed user, uint256 stakeAmount, uint256 timestamp);
     event TreasuryFunded(uint256 indexed habitId, uint256 amount);
-    event GlobalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
+    event NaturalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
+    event CheckInPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
     // Errors
     error InsufficientBalance();
@@ -76,6 +78,8 @@ contract HabitChain {
     error AlreadyCheckedInToday();
     error EmptyHabitName();
     error HabitNotSlashed();
+    error NoHabitsEligibleForSettlement();
+    error CheckInPeriodExpired();
 
     /**
      * @notice Constructor to initialize HabitChain with Aave integration
@@ -184,6 +188,7 @@ contract HabitChain {
             createdAt: block.timestamp,
             lastCheckIn: 0,
             checkInCount: 0,
+            lastSettled: 0,
             isActive: true,
             isSettled: false
         });
@@ -196,7 +201,7 @@ contract HabitChain {
     }
 
     /**
-     * @notice Perform a daily check-in for a habit
+     * @notice Perform a check-in for a habit
      * @param habitId ID of the habit to check in
      */
     function checkIn(uint256 habitId) external {
@@ -205,10 +210,24 @@ contract HabitChain {
         if (habit.id == 0) revert HabitNotFound();
         if (!habit.isActive) revert HabitNotActive();
         if (habit.user != msg.sender) revert NotHabitOwner();
+        if (habit.stakeAmount == 0) revert HabitNotSlashed(); // Can't check in on slashed habit
 
-        // Check if already checked in today
-        if (habit.lastCheckIn > 0 && block.timestamp - habit.lastCheckIn < ONE_DAY) {
+        // Check if already checked in within the check-in period (too soon)
+        if (habit.lastCheckIn > 0 && block.timestamp - habit.lastCheckIn < checkInPeriod) {
             revert AlreadyCheckedInToday();
+        }
+
+        // Check if grace period has expired (too late)
+        if (habit.lastCheckIn == 0 && habit.lastSettled > 0) {
+            // Refunded habit - check if grace period from refund has passed
+            if (block.timestamp >= habit.lastSettled + checkInPeriod) {
+                revert CheckInPeriodExpired();
+            }
+        } else if (habit.lastCheckIn == 0 && habit.lastSettled == 0) {
+            // Brand new habit - check if grace period from creation has passed
+            if (block.timestamp >= habit.createdAt + checkInPeriod) {
+                revert CheckInPeriodExpired();
+            }
         }
 
         habit.lastCheckIn = block.timestamp;
@@ -242,35 +261,31 @@ contract HabitChain {
         habit.stakeAmount = stakeAmount;
         habit.aTokenAmount = stakeAmount;
         habit.liquidityIndex = currentLiquidityIndex;
+        habit.lastCheckIn = 0; // Reset check-in (treat like new habit)
+        habit.lastSettled = block.timestamp; // Reset settlement timer to give fresh grace period
         // Habit remains active (isActive stays true)
 
         emit HabitRefunded(habitId, msg.sender, stakeAmount, block.timestamp);
     }
 
     /**
-     * @notice Force settle a habit (testing only - determines success/failure)
-     * @param habitId ID of the habit to settle
-     * @param success Whether the habit was completed successfully
+     * @notice Set the check-in period for habits (can be called by anyone for testing)
+     * @param _period New check-in period in seconds
      */
-    function forceSettle(uint256 habitId, bool success) external {
-        Habit storage habit = habits[habitId];
-
-        if (habit.id == 0) revert HabitNotFound();
-        if (!habit.isActive) revert HabitNotActive();
-        if (habit.isSettled) revert HabitAlreadySettled();
-        if (habit.user != msg.sender) revert NotHabitOwner();
-
-        _settleHabit(habitId, success);
+    function setCheckInPeriod(uint256 _period) external {
+        require(_period > 0, "Period must be greater than 0");
+        uint256 oldPeriod = checkInPeriod;
+        checkInPeriod = _period;
+        emit CheckInPeriodUpdated(oldPeriod, _period);
     }
 
     /**
-     * @notice Settle all active habits (simulates end-of-day settlement)
-     * @dev Iterates through all habits and settles based on check-in status
-     *      Success = checked in within last 24 hours (returns funds to user)
-     *      Failure = not checked in within last 24 hours (sends funds to treasury)
-     *      After settlement, habits reset for the next day
+     * @notice Natural settlement - settles habits that have passed their deadline
+     * @dev Can be called by anyone at any time
+     *      Only settles habits where the check-in deadline has been exceeded
+     *      Reverts if no habits are eligible for settlement
      */
-    function globalSettle() external {
+    function naturalSettle() external {
         uint256 totalSettled = 0;
         uint256 successfulHabits = 0;
         uint256 failedHabits = 0;
@@ -284,9 +299,18 @@ contract HabitChain {
                 continue;
             }
 
+            // Special case: Refunded habits (lastCheckIn reset to 0, lastSettled > 0)
+            // These need to wait for grace period before being eligible for settlement
+            if (habit.lastCheckIn == 0 && habit.lastSettled > 0) {
+                // Skip if grace period hasn't passed yet (strict inequality)
+                if (block.timestamp < habit.lastSettled + checkInPeriod) {
+                    continue;
+                }
+            }
+
             // Determine success based on check-in status
-            // Success: checked in within last 24 hours
-            bool success = habit.lastCheckIn > 0 && (block.timestamp - habit.lastCheckIn) < ONE_DAY;
+            // Success: checked in within the grace period
+            bool success = habit.lastCheckIn > 0 && (block.timestamp - habit.lastCheckIn) <= checkInPeriod;
 
             // Process daily settlement (distributes funds but keeps habit active for next day)
             _dailySettleHabit(habitId, success);
@@ -299,7 +323,11 @@ contract HabitChain {
             }
         }
 
-        emit GlobalSettlementCompleted(totalSettled, successfulHabits, failedHabits, block.timestamp);
+        // Only emit event if any habits were settled
+        // Note: We don't revert if no habits were settled, as this is a valid state
+        if (totalSettled > 0) {
+            emit NaturalSettlementCompleted(totalSettled, successfulHabits, failedHabits, block.timestamp);
+        }
     }
 
     /**
@@ -368,6 +396,9 @@ contract HabitChain {
             habit.liquidityIndex = 0;
             // User needs to create a new habit or manually restake
         }
+
+        // Update settlement timestamp to prevent double-settlement
+        habit.lastSettled = block.timestamp;
 
         // Don't reset check-in tracking - preserve historical data
         // habit.lastCheckIn stays as is (shows last time user checked in)

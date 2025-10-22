@@ -104,34 +104,28 @@ contract HabitChainCheckInTest is HabitChainBaseTest {
         vm.stopPrank();
     }
 
-    function testRevert_CheckInOnInactiveHabit() public {
+    function test_CheckInOnSlashedHabit() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Swimming", 0.5 ether);
         
         vm.startPrank(user1);
         
-        // Settle the habit (makes it inactive)
-        habitChain.forceSettle(habitId, true);
-        
-        // Try to check in on inactive habit
-        vm.expectRevert(HabitChain.HabitNotActive.selector);
-        habitChain.checkIn(habitId);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
         
         vm.stopPrank();
-    }
-
-    function testRevert_CheckInOnSettledHabit() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Cycling", 0.4 ether);
         
-        vm.startPrank(user1);
+        // Natural settle - slashes the habit but keeps it active
+        habitChain.naturalSettle();
         
+        // Habit should be active but slashed (stake = 0)
+        HabitChain.Habit memory habit = habitChain.getHabit(habitId);
+        assertTrue(habit.isActive, "Should be active");
+        assertEq(habit.stakeAmount, 0, "Should be slashed");
+        
+        // User CANNOT check in on slashed habit (must refund first)
+        vm.prank(user1);
+        vm.expectRevert(HabitChain.HabitNotSlashed.selector);
         habitChain.checkIn(habitId);
-        habitChain.forceSettle(habitId, true);
-        
-        // Habit is now settled and inactive
-        vm.expectRevert(HabitChain.HabitNotActive.selector);
-        habitChain.checkIn(habitId);
-        
-        vm.stopPrank();
     }
 
     function testRevert_CheckInOtherUsersHabit() public {
@@ -213,6 +207,51 @@ contract HabitChainCheckInTest is HabitChainBaseTest {
         assertEq(getHabit(habitId).checkInCount, 2);
         
         vm.stopPrank();
+    }
+
+    function testRevert_CheckInAfterGracePeriodExpired() public {
+        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
+        
+        // Don't check in, wait past grace period
+        skipDays(1);
+        
+        // Try to check in after grace period expired (should fail)
+        vm.prank(user1);
+        vm.expectRevert(HabitChain.CheckInPeriodExpired.selector);
+        habitChain.checkIn(habitId);
+    }
+
+    function testRevert_CheckInOnSlashedHabit() public {
+        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
+        
+        // Slash the habit
+        habitChain.naturalSettle();
+        
+        assertEq(getHabit(habitId).stakeAmount, 0, "Habit should be slashed");
+        
+        // Try to check in on slashed habit (should fail)
+        vm.prank(user1);
+        vm.expectRevert(HabitChain.HabitNotSlashed.selector);
+        habitChain.checkIn(habitId);
+    }
+
+    function testRevert_CheckInOnRefundedHabitAfterGracePeriod() public {
+        uint256 habitId = setupBasicHabit(user1, 2 ether, "Exercise", 0.5 ether);
+        
+        // Slash the habit
+        habitChain.naturalSettle();
+        
+        // Refund it
+        vm.prank(user1);
+        habitChain.refundHabit(habitId, 0.5 ether);
+        
+        // Wait past the new grace period
+        skipDays(1);
+        
+        // Try to check in after refund grace period expired (should fail)
+        vm.prank(user1);
+        vm.expectRevert(HabitChain.CheckInPeriodExpired.selector);
+        habitChain.checkIn(habitId);
     }
 }
 

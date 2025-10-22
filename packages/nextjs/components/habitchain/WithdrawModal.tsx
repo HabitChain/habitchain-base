@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseEther, formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { EtherInput } from "~~/components/scaffold-eth";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
@@ -12,7 +12,7 @@ interface WithdrawModalProps {
 }
 
 export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("0.01");
   const { address: connectedAddress } = useAccount();
 
   const { data: userBalance } = useScaffoldReadContract({
@@ -111,4 +111,3 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
     </div>
   );
 };
-

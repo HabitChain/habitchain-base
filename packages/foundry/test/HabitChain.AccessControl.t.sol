@@ -16,18 +16,12 @@ contract HabitChainAccessControlTest is HabitChainBaseTest {
         habitChain.checkIn(habitId);
     }
 
-    function testRevert_SettleNotHabitOwner() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "User1 Habit", 0.5 ether);
-        
-        vm.prank(user2);
-        vm.expectRevert(HabitChain.NotHabitOwner.selector);
-        habitChain.forceSettle(habitId, true);
-    }
+    // Note: testRevert_SettleNotHabitOwner removed - natural settle can be called by anyone
 
     function testRevert_RefundNotHabitOwner() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "User1 Habit", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user2);
         habitChain.deposit{ value: 1 ether }();
@@ -48,11 +42,7 @@ contract HabitChainAccessControlTest is HabitChainBaseTest {
         habitChain.checkIn(0);
     }
 
-    function testRevert_SettleHabitNotFound() public {
-        vm.prank(user1);
-        vm.expectRevert(HabitChain.HabitNotFound.selector);
-        habitChain.forceSettle(9999, true);
-    }
+    // Note: testRevert_SettleHabitNotFound removed - natural settle handles missing habits gracefully
 
     function testRevert_RefundHabitNotFound() public {
         vm.startPrank(user1);
@@ -65,8 +55,11 @@ contract HabitChainAccessControlTest is HabitChainBaseTest {
     function testRevert_TreasuryWithdrawNonTreasuryAddress() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Habit", 0.5 ether);
         
-        vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         vm.expectRevert("Only treasury can withdraw");
@@ -194,46 +187,8 @@ contract HabitChainAccessControlTest is HabitChainBaseTest {
         assertEq(h5, 5);
     }
 
-    function testRevert_OperationsOnHabitAfterSettlement() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
-        
-        vm.startPrank(user1);
-        
-        habitChain.checkIn(habitId);
-        habitChain.forceSettle(habitId, true);
-        
-        // Habit is now settled and inactive
-        
-        // Try to check in
-        vm.expectRevert(HabitChain.HabitNotActive.selector);
-        habitChain.checkIn(habitId);
-        
-        // Try to settle again
-        vm.expectRevert(HabitChain.HabitAlreadySettled.selector);
-        habitChain.forceSettle(habitId, true);
-        
-        // Try to refund
-        vm.expectRevert(HabitChain.HabitNotActive.selector);
-        habitChain.refundHabit(habitId, 0.5 ether);
-        
-        vm.stopPrank();
-    }
-
-    function testRevert_DoubleSettlementAttempts() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
-        
-        vm.startPrank(user1);
-        
-        habitChain.forceSettle(habitId, true);
-        
-        vm.expectRevert(HabitChain.HabitAlreadySettled.selector);
-        habitChain.forceSettle(habitId, true);
-        
-        vm.expectRevert(HabitChain.HabitAlreadySettled.selector);
-        habitChain.forceSettle(habitId, false);
-        
-        vm.stopPrank();
-    }
+    // Note: testRevert_OperationsOnHabitAfterSettlement removed - natural settle keeps habits active
+    // Note: testRevert_DoubleSettlementAttempts removed - permanent settlement no longer exists
 
     function test_MultipleHabitsAcrossAllUsers() public {
         // Stress test with many habits from different users
@@ -305,22 +260,12 @@ contract HabitChainAccessControlTest is HabitChainBaseTest {
         assertEq(yield, 0, "Non-existent habit should return 0 yield");
     }
 
-    function test_GetHabitCurrentValueOnSettledHabit() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
-        
-        vm.prank(user1);
-        habitChain.forceSettle(habitId, true);
-        
-        (uint256 value, uint256 yield) = habitChain.getHabitCurrentValue(habitId);
-        
-        assertEq(value, 0, "Settled habit should return 0 value");
-        assertEq(yield, 0, "Settled habit should return 0 yield");
-    }
+    // Note: test_GetHabitCurrentValueOnSettledHabit removed - permanent settlement no longer exists
 
     function test_GetHabitCurrentValueOnSlashedHabit() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         (uint256 value, uint256 yield) = habitChain.getHabitCurrentValue(habitId);
         

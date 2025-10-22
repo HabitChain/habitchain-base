@@ -12,7 +12,7 @@ interface DepositModalProps {
 }
 
 export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("0.1");
   const { address: connectedAddress } = useAccount();
 
   const { data: ethBalance } = useBalance({
@@ -64,8 +64,8 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
           <EtherInput value={amount} onChange={value => setAmount(value)} placeholder="1.0" />
           <label className="label">
             <span className="label-text-alt">
-              Wallet Balance:{" "}
-              {ethBalance ? parseFloat(parseEther(ethBalance.value.toString()).toString()) / 1e18 : 0} ETH
+              Wallet Balance: {ethBalance ? parseFloat(parseEther(ethBalance.value.toString()).toString()) / 1e18 : 0}{" "}
+              ETH
             </span>
           </label>
         </div>
@@ -101,4 +101,3 @@ export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
     </div>
   );
 };
-

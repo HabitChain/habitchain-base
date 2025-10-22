@@ -12,7 +12,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Exercise", 0.5 ether);
         
         // Slash the habit via global settlement without check-in
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         assertEq(getHabit(habitId).stakeAmount, 0, "Habit should be slashed");
         
@@ -40,7 +40,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Reading", 0.5 ether);
         
         // Slash the habit
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         assertTrue(getHabit(habitId).isActive, "Should remain active even when slashed");
         assertEq(getHabit(habitId).stakeAmount, 0, "Stake should be 0");
@@ -57,7 +57,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_RefundWithExactMinStake() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Meditation", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         uint256 minStake = 0.001 ether;
@@ -69,7 +69,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_RefundWithMoreThanOriginalStake() public {
         uint256 habitId = setupBasicHabit(user1, 3 ether, "Yoga", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         habitChain.refundHabit(habitId, 1 ether);
@@ -89,7 +89,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function testRevert_RefundWithInsufficientBalance() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Swimming", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user1);
         
@@ -103,7 +103,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function testRevert_RefundWithBelowMinStake() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Cycling", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         vm.expectRevert(HabitChain.InsufficientStake.selector);
@@ -113,7 +113,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function testRevert_RefundOtherUsersHabit() public {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Cooking", 0.3 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user2);
         habitChain.deposit{ value: 1 ether }();
@@ -124,19 +124,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         vm.stopPrank();
     }
 
-    function testRevert_RefundInactiveHabit() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Writing", 0.3 ether);
-        
-        vm.startPrank(user1);
-        
-        // Force settle makes it inactive
-        habitChain.forceSettle(habitId, true);
-        
-        vm.expectRevert(HabitChain.HabitNotActive.selector);
-        habitChain.refundHabit(habitId, 0.3 ether);
-        
-        vm.stopPrank();
-    }
+    // Note: testRevert_RefundInactiveHabit removed - natural settle keeps habits active
 
     function testRevert_RefundNonExistentHabit() public {
         vm.startPrank(user1);
@@ -151,7 +139,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_VerifyBalanceDeductionAfterRefund() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Guitar", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user1);
         
@@ -170,7 +158,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_VerifyATokenAmountAndLiquidityIndexUpdate() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Drawing", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         habitChain.refundHabit(habitId, 0.7 ether);
@@ -185,7 +173,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_HabitRefundedEventEmission() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Language", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.prank(user1);
         
@@ -201,7 +189,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Exercise", 0.5 ether);
         
         // Slash the habit
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user1);
         
@@ -228,7 +216,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         vm.stopPrank();
         
         // Slash all habits
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user1);
         
@@ -247,7 +235,7 @@ contract HabitChainRefundTest is HabitChainBaseTest {
     function test_RefundAndImmediatelyCheckIn() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Running", 0.5 ether);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         vm.startPrank(user1);
         
@@ -258,6 +246,64 @@ contract HabitChainRefundTest is HabitChainBaseTest {
         assertEq(getHabit(habitId).stakeAmount, 0.5 ether);
         
         vm.stopPrank();
+    }
+
+    function test_RefundedHabitCanBeSlashedAgainWithoutCheckIn() public {
+        uint256 habitId = setupBasicHabit(user1, 2 ether, "Exercise", 0.5 ether);
+        
+        // First slash - habit not checked in
+        habitChain.naturalSettle();
+        assertEq(getHabit(habitId).stakeAmount, 0, "Habit should be slashed");
+        
+        uint256 treasuryAfterFirstSlash = habitChain.getTreasuryBalance();
+        
+        vm.startPrank(user1);
+        
+        // Refund the habit
+        habitChain.refundHabit(habitId, 0.5 ether);
+        assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Habit should have stake after refund");
+        
+        vm.stopPrank();
+        
+        // Don't check in, wait past grace period
+        skipDays(1);
+        
+        // Second natural settlement - should slash again
+        habitChain.naturalSettle();
+        
+        // Verify habit was slashed again
+        assertEq(getHabit(habitId).stakeAmount, 0, "Habit should be slashed again");
+        
+        // Verify treasury received the second slash
+        uint256 treasuryAfterSecondSlash = habitChain.getTreasuryBalance();
+        assertGe(treasuryAfterSecondSlash - treasuryAfterFirstSlash, 0.5 ether - 1e15, "Treasury should receive second slash");
+    }
+
+    function test_RefundedHabitWithCheckInIsNotSlashed() public {
+        uint256 habitId = setupBasicHabit(user1, 2 ether, "Meditation", 0.5 ether);
+        
+        // First slash
+        habitChain.naturalSettle();
+        assertEq(getHabit(habitId).stakeAmount, 0, "Habit should be slashed");
+        
+        vm.startPrank(user1);
+        
+        // Refund the habit
+        habitChain.refundHabit(habitId, 0.5 ether);
+        
+        // Check in this time
+        habitChain.checkIn(habitId);
+        
+        vm.stopPrank();
+        
+        // Wait past grace period
+        skipDays(1);
+        
+        // Natural settlement - should succeed (keep stake) because of check-in
+        habitChain.naturalSettle();
+        
+        // Verify habit retained stake
+        assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Habit should retain stake after check-in");
     }
 }
 

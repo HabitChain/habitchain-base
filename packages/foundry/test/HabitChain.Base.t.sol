@@ -39,7 +39,8 @@ contract HabitChainBaseTest is Test {
     );
     event HabitRefunded(uint256 indexed habitId, address indexed user, uint256 stakeAmount, uint256 timestamp);
     event TreasuryFunded(uint256 indexed habitId, uint256 amount);
-    event GlobalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
+    event NaturalSettlementCompleted(uint256 totalSettled, uint256 successfulHabits, uint256 failedHabits, uint256 timestamp);
+    event CheckInPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
     function setUp() public virtual {
         // Fork Base mainnet for real Aave integration at a specific block for consistency
@@ -88,14 +89,6 @@ contract HabitChainBaseTest is Test {
     function checkInFor(address user, uint256 habitId) internal {
         vm.prank(user);
         habitChain.checkIn(habitId);
-    }
-
-    /**
-     * @notice Helper function to force settle a habit
-     */
-    function forceSettleFor(address user, uint256 habitId, bool success) internal {
-        vm.prank(user);
-        habitChain.forceSettle(habitId, success);
     }
 
     /**

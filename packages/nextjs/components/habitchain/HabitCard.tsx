@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { formatEther, parseEther } from "viem";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { usePublicClient } from "wagmi";
-import { SettlementButton } from "./SettlementButton";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
 interface HabitCardProps {
@@ -15,13 +14,18 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const [refundAmount, setRefundAmount] = useState("");
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [blockchainTimestamp, setBlockchainTimestamp] = useState<number>(0);
-  
+
   const publicClient = usePublicClient();
 
   const { data: habit } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getHabit",
     args: [habitId],
+  });
+
+  const { data: checkInPeriod } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "checkInPeriod",
   });
 
   const { writeContractAsync: writeHabitChainAsync, isPending: isCheckingIn } = useScaffoldWriteContract({
@@ -32,9 +36,9 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   useEffect(() => {
     const fetchBlockchainTimestamp = async () => {
       if (!publicClient) return;
-      
+
       try {
-        const block = await publicClient.getBlock({ blockTag: 'latest' });
+        const block = await publicClient.getBlock({ blockTag: "latest" });
         setBlockchainTimestamp(Number(block.timestamp));
       } catch (error) {
         console.error("Error fetching blockchain timestamp:", error);
@@ -44,12 +48,13 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
     };
 
     fetchBlockchainTimestamp();
-    
-    // Update timestamp every 30 seconds to keep it relatively current
-    const interval = setInterval(fetchBlockchainTimestamp, 30000);
-    
+
+    // Update timestamp more frequently for testing (every 1 second if period <= 10 seconds, otherwise 30 seconds)
+    const updateInterval = checkInPeriod && Number(checkInPeriod) <= 10 ? 1000 : 30000;
+    const interval = setInterval(fetchBlockchainTimestamp, updateInterval);
+
     return () => clearInterval(interval);
-  }, [publicClient]);
+  }, [publicClient, checkInPeriod]);
 
   const handleCheckIn = async () => {
     try {
@@ -99,7 +104,8 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const lastCheckIn = Number(habit.lastCheckIn);
   const now = blockchainTimestamp; // Use blockchain timestamp instead of local time
   const timeSinceLastCheckIn = lastCheckIn > 0 ? now - lastCheckIn : 0;
-  const canCheckInAgain = lastCheckIn === 0 || timeSinceLastCheckIn >= 86400; // 24 hours
+  const currentCheckInPeriod = checkInPeriod ? Number(checkInPeriod) : 86400; // Default to 24h if not loaded
+  const canCheckInAgain = lastCheckIn === 0 || timeSinceLastCheckIn >= currentCheckInPeriod;
 
   // Detect slashed status: isActive but stakeAmount is 0
   const isSlashed = isActive && habit.stakeAmount === 0n;
@@ -107,9 +113,10 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   // Format last check-in time
   const formatLastCheckIn = () => {
     if (lastCheckIn === 0) return "Never";
+    const periodHours = Math.floor(currentCheckInPeriod / 3600);
     const hours = Math.floor(timeSinceLastCheckIn / 3600);
     if (hours < 1) return "Less than 1 hour ago";
-    if (hours < 24) return `${hours} hours ago`;
+    if (periodHours <= 24) return `${hours} hours ago`;
     const days = Math.floor(hours / 24);
     return `${days} day${days > 1 ? "s" : ""} ago`;
   };
@@ -178,21 +185,16 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
               ) : canCheckInAgain ? (
                 "✓ Check In"
               ) : (
-                "Already checked in today"
+                "Already checked in this period"
               )}
             </button>
-
-            <SettlementButton habitId={habitId} habitName={habit.name} />
           </div>
         )}
 
         {/* Actions for Slashed Habits */}
         {isSlashed && (
           <div className="card-actions flex-col gap-2">
-            <button
-              className="btn btn-warning btn-block"
-              onClick={() => setIsRefundModalOpen(true)}
-            >
+            <button className="btn btn-warning btn-block" onClick={() => setIsRefundModalOpen(true)}>
               💰 Refund Habit
             </button>
           </div>
@@ -214,7 +216,7 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
             <p className="mb-4 text-sm opacity-70">
               This habit was slashed. Enter an amount to restake and reactivate it.
             </p>
-            
+
             <div className="form-control">
               <label className="label">
                 <span className="label-text">Refund Amount (ETH)</span>
@@ -224,7 +226,7 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
                 placeholder="0.1"
                 className="input input-bordered"
                 value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
+                onChange={e => setRefundAmount(e.target.value)}
                 step="0.001"
                 min="0.001"
               />
@@ -247,4 +249,3 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
     </div>
   );
 };
-

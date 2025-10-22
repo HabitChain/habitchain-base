@@ -12,8 +12,11 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         // Setup: Create a failed habit to fund treasury
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
         
-        vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         assertGt(treasuryBalance, 0, "Treasury should have funds");
@@ -35,9 +38,13 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         habitChain.deposit{ value: 3 ether }();
         uint256 habit1 = habitChain.createHabit("Habit 1", 0.5 ether);
         uint256 habit2 = habitChain.createHabit("Habit 2", 0.5 ether);
-        habitChain.forceSettle(habit1, false);
-        habitChain.forceSettle(habit2, false);
         vm.stopPrank();
+        
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash both habits
+        habitChain.naturalSettle();
         
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         assertGe(treasuryBalance, 1 ether - 1e15, "Treasury should have ~1 ETH");
@@ -55,8 +62,11 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
     function test_FullTreasuryWithdrawal() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Reading", 1 ether);
         
-        vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         
@@ -70,7 +80,10 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Meditation", 0.5 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         // User1 tries to withdraw treasury funds
         vm.prank(user1);
@@ -87,7 +100,10 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Yoga", 0.3 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         
@@ -108,7 +124,10 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Running", 0.8 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         
@@ -126,23 +145,28 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
-        habitChain.forceSettle(habit1, false);
-        habitChain.forceSettle(habit2, false);
-        habitChain.forceSettle(habit3, false);
+        vm.stopPrank();
+        
+        // Don't check in, wait past deadline
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash all three habits
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         
         // Treasury should receive total of 1.8 ETH
         assertGe(treasuryAfter - treasuryBefore, 1.8 ether - 1e14, "Treasury should accumulate all slashed funds");
-        
-        vm.stopPrank();
     }
 
     function test_TreasuryBalanceEarningYieldOverTime() public {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Swimming", 1 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryBalanceInitial = habitChain.getTreasuryBalance();
         
@@ -167,7 +191,7 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         vm.stopPrank();
         
         // First global settlement - both fail
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfterFirst = habitChain.getTreasuryBalance();
         assertGe(treasuryAfterFirst, 1 ether - 1e14, "Should have ~1 ETH from both habits");
@@ -179,7 +203,7 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         vm.stopPrank();
         
         // Second global settlement - both fail again
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfterSecond = habitChain.getTreasuryBalance();
         assertGe(treasuryAfterSecond, treasuryAfterFirst + 1 ether - 1e14, "Should accumulate another ~1 ETH");
@@ -189,7 +213,10 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 2 ether, "Cycling", 0.7 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 treasuryBalance = habitChain.getTreasuryBalance();
         uint256 treasuryEthBefore = treasury.balance;
@@ -209,7 +236,10 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 habitId = setupBasicHabit(user1, 1 ether, "Cooking", 0.4 ether);
         
         vm.prank(user1);
-        habitChain.forceSettle(habitId, false);
+        vm.warp(block.timestamp + 2 days);
+        
+        // Natural settle to slash the habit
+        habitChain.naturalSettle();
         
         uint256 balance = habitChain.getTreasuryBalance();
         assertGe(balance, 0.4 ether - 1e15, "getTreasuryBalance should return correct value");
@@ -227,7 +257,7 @@ contract HabitChainTreasuryTest is HabitChainBaseTest {
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
         // Global settlement without check-ins
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         

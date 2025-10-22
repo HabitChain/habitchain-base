@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { formatEther } from "viem";
-import { useAccount } from "wagmi";
-import { Address } from "~~/components/scaffold-eth";
-import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useEffect, useState } from "react";
 import { CreateHabitModal } from "./CreateHabitModal";
 import { DepositModal } from "./DepositModal";
-import { WithdrawModal } from "./WithdrawModal";
 import { HabitCard } from "./HabitCard";
+import { WithdrawModal } from "./WithdrawModal";
+import { formatEther } from "viem";
+import { useAccount } from "wagmi";
+import { usePublicClient } from "wagmi";
+import { Address } from "~~/components/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
 export const Dashboard = () => {
@@ -17,8 +18,13 @@ export const Dashboard = () => {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
+  const [isUpdatingPeriod, setIsUpdatingPeriod] = useState(false);
+  const [blockchainTimestamp, setBlockchainTimestamp] = useState<number>(0);
+  const [isMining, setIsMining] = useState(false);
 
-  // Write contract hook for globalSettle
+  const publicClient = usePublicClient();
+
+  // Write contract hook
   const { writeContractAsync: writeHabitChainAsync } = useScaffoldWriteContract({
     contractName: "HabitChain",
   });
@@ -29,6 +35,34 @@ export const Dashboard = () => {
     functionName: "getUserBalance",
     args: [connectedAddress],
   });
+
+  // Read check-in period
+  const { data: checkInPeriod } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "checkInPeriod",
+  });
+
+  // Fetch blockchain timestamp for debugging
+  useEffect(() => {
+    const fetchBlockchainTimestamp = async () => {
+      if (!publicClient) return;
+
+      try {
+        const block = await publicClient.getBlock({ blockTag: "latest" });
+        setBlockchainTimestamp(Number(block.timestamp));
+      } catch (error) {
+        console.error("Error fetching blockchain timestamp:", error);
+        setBlockchainTimestamp(Math.floor(Date.now() / 1000));
+      }
+    };
+
+    fetchBlockchainTimestamp();
+
+    // Update timestamp frequently for debugging
+    const interval = setInterval(fetchBlockchainTimestamp, 1000);
+
+    return () => clearInterval(interval);
+  }, [publicClient]);
 
   // Read user habits
   const { data: userHabitIds } = useScaffoldReadContract({
@@ -44,7 +78,7 @@ export const Dashboard = () => {
     args: [connectedAddress],
   });
 
-  const handleGlobalSettle = async () => {
+  const handleNaturalSettle = async () => {
     if (!connectedAddress) {
       notification.error("Please connect your wallet");
       return;
@@ -53,14 +87,87 @@ export const Dashboard = () => {
     try {
       setIsSettling(true);
       await writeHabitChainAsync({
-        functionName: "globalSettle",
+        functionName: "naturalSettle",
       });
-      notification.success("Global settlement completed successfully!");
+      notification.success("Natural settlement completed successfully!");
     } catch (error) {
       console.error("Error settling habits:", error);
-      notification.error("Failed to settle habits");
+      notification.error("Failed to settle habits. No eligible habits or transaction failed.");
     } finally {
       setIsSettling(false);
+    }
+  };
+
+  const handleSetCheckInPeriod = async (period: bigint) => {
+    if (!connectedAddress) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      setIsUpdatingPeriod(true);
+      await writeHabitChainAsync({
+        functionName: "setCheckInPeriod",
+        args: [period],
+      });
+      notification.success(`Check-in period updated to ${period === 5n ? "5 seconds" : "24 hours"}!`);
+    } catch (error) {
+      console.error("Error updating check-in period:", error);
+      notification.error("Failed to update check-in period");
+    } finally {
+      setIsUpdatingPeriod(false);
+    }
+  };
+
+  // Check if currently in test mode
+  const isTestMode = checkInPeriod === 5n;
+
+  const handleMineBlock = async () => {
+    if (!publicClient) return;
+
+    try {
+      setIsMining(true);
+      // Send a no-op transaction to mine a block and advance timestamp
+      await (publicClient as any).request({
+        method: "evm_mine",
+        params: [],
+      });
+      notification.success("Block mined - timestamp updated!");
+      // Force refresh timestamp
+      const block = await publicClient.getBlock({ blockTag: "latest" });
+      setBlockchainTimestamp(Number(block.timestamp));
+    } catch (error) {
+      console.error("Error mining block:", error);
+      notification.error("Failed to mine block");
+    } finally {
+      setIsMining(false);
+    }
+  };
+
+  const handleAdvanceTime = async (seconds: number) => {
+    if (!publicClient) return;
+
+    try {
+      setIsMining(true);
+      // Increase time by specified seconds
+      await (publicClient as any).request({
+        method: "evm_increaseTime",
+        params: [seconds],
+      });
+      // Mine a block to apply the time change
+      await (publicClient as any).request({
+        method: "evm_mine",
+        params: [],
+      });
+      notification.success(`Time advanced by ${seconds} seconds!`);
+      // Force refresh timestamp
+      const block = await publicClient.getBlock({ blockTag: "latest" });
+      setBlockchainTimestamp(Number(block.timestamp));
+    } catch (error) {
+      console.error("Error advancing time:", error);
+      notification.error("Failed to advance time");
+    } finally {
+      setIsMining(false);
     }
   };
 
@@ -89,11 +196,13 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <h3 className="card-title text-lg">Available Balance</h3>
-              <p className="text-3xl font-bold">{userBalance ? `${parseFloat(formatEther(userBalance)).toFixed(4)} ETH` : "0 ETH"}</p>
+              <p className="text-3xl font-bold">
+                {userBalance ? `${parseFloat(formatEther(userBalance)).toFixed(4)} ETH` : "0 ETH"}
+              </p>
             </div>
           </div>
 
@@ -110,6 +219,45 @@ export const Dashboard = () => {
               <p className="text-3xl font-bold">{userHabitIds?.length || "0"}</p>
             </div>
           </div>
+
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h3 className="card-title text-sm">Check-in Period</h3>
+              <div className="flex gap-1 mt-2">
+                <button
+                  className={`btn btn-xs ${isTestMode ? "btn-success" : "btn-outline"}`}
+                  onClick={() => handleSetCheckInPeriod(5n)}
+                  disabled={isUpdatingPeriod || isTestMode}
+                >
+                  {isUpdatingPeriod && isTestMode ? <span className="loading loading-spinner loading-xs"></span> : "5s"}
+                </button>
+                <button
+                  className={`btn btn-xs ${!isTestMode ? "btn-success" : "btn-outline"}`}
+                  onClick={() => handleSetCheckInPeriod(86400n)}
+                  disabled={isUpdatingPeriod || !isTestMode}
+                >
+                  {isUpdatingPeriod && !isTestMode ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    "24h"
+                  )}
+                </button>
+              </div>
+              <div className="divider my-2"></div>
+              <div className="text-xs opacity-70">🕒 {new Date(blockchainTimestamp * 1000).toLocaleString()}</div>
+              <div className="flex gap-1 mt-2">
+                <button className="btn btn-xs btn-outline" onClick={handleMineBlock} disabled={isMining}>
+                  {isMining ? <span className="loading loading-spinner loading-xs"></span> : "⛏️"}
+                </button>
+                <button className="btn btn-xs btn-outline" onClick={() => handleAdvanceTime(5)} disabled={isMining}>
+                  {isMining ? <span className="loading loading-spinner loading-xs"></span> : "+5s"}
+                </button>
+                <button className="btn btn-xs btn-outline" onClick={() => handleAdvanceTime(60)} disabled={isMining}>
+                  {isMining ? <span className="loading loading-spinner loading-xs"></span> : "+1m"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -124,18 +272,14 @@ export const Dashboard = () => {
         <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
           ➕ Create New Habit
         </button>
-        <button 
-          className="btn btn-error" 
-          onClick={handleGlobalSettle}
-          disabled={isSettling}
-        >
+        <button className="btn btn-error" onClick={handleNaturalSettle} disabled={isSettling}>
           {isSettling ? (
             <>
               <span className="loading loading-spinner loading-sm"></span>
               Settling...
             </>
           ) : (
-            "⚖️ Global Settle"
+            "⚖️ Natural Settle"
           )}
         </button>
       </div>
@@ -169,4 +313,3 @@ export const Dashboard = () => {
     </div>
   );
 };
-

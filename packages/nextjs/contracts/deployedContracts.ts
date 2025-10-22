@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     HabitChain: {
-      address: "0xf3390f611bf36ca72a416211f033947129a485e2",
+      address: "0x859571d50bf5e7926d4b455a62f1fa4d11c5023f",
       abi: [
         {
           type: "constructor",
@@ -42,19 +42,6 @@ const deployedContracts = {
         {
           type: "function",
           name: "MIN_STAKE",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "ONE_DAY",
           inputs: [],
           outputs: [
             {
@@ -106,6 +93,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "checkInPeriod",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "createHabit",
           inputs: [
             {
@@ -134,24 +134,6 @@ const deployedContracts = {
           inputs: [],
           outputs: [],
           stateMutability: "payable",
-        },
-        {
-          type: "function",
-          name: "forceSettle",
-          inputs: [
-            {
-              name: "habitId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "success",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -211,6 +193,11 @@ const deployedContracts = {
                 },
                 {
                   name: "checkInCount",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "lastSettled",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -325,13 +312,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "globalSettle",
-          inputs: [],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
           name: "habits",
           inputs: [
             {
@@ -387,6 +367,11 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
+              name: "lastSettled",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
               name: "isActive",
               type: "bool",
               internalType: "bool",
@@ -398,6 +383,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "naturalSettle",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -423,6 +415,19 @@ const deployedContracts = {
             },
             {
               name: "stakeAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setCheckInPeriod",
+          inputs: [
+            {
+              name: "_period",
               type: "uint256",
               internalType: "uint256",
             },
@@ -571,6 +576,25 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "CheckInPeriodUpdated",
+          inputs: [
+            {
+              name: "oldPeriod",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "newPeriod",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "Deposited",
           inputs: [
             {
@@ -581,37 +605,6 @@ const deployedContracts = {
             },
             {
               name: "amount",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "GlobalSettlementCompleted",
-          inputs: [
-            {
-              name: "totalSettled",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "successfulHabits",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "failedHabits",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "timestamp",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -732,6 +725,37 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "NaturalSettlementCompleted",
+          inputs: [
+            {
+              name: "totalSettled",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "successfulHabits",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "failedHabits",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "timestamp",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "TreasuryFunded",
           inputs: [
             {
@@ -775,6 +799,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "CheckInPeriodExpired",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "EmptyHabitName",
           inputs: [],
         },
@@ -810,12 +839,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "NoHabitsEligibleForSettlement",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "NotHabitOwner",
           inputs: [],
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 37150008,
+      deployedOnBlock: 37179391,
     },
   },
 } as const;

@@ -12,8 +12,8 @@ interface CreateHabitModalProps {
 }
 
 export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => {
-  const [habitName, setHabitName] = useState("");
-  const [stakeAmount, setStakeAmount] = useState("");
+  const [habitName, setHabitName] = useState("Run in the morning");
+  const [stakeAmount, setStakeAmount] = useState("0.01");
   const { address: connectedAddress } = useAccount();
 
   const { writeContractAsync: writeHabitChainAsync, isPending } = useScaffoldWriteContract({
@@ -80,15 +80,9 @@ export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => 
           <label className="label">
             <span className="label-text">Stake Amount (ETH)</span>
           </label>
-          <EtherInput
-            value={stakeAmount}
-            onChange={value => setStakeAmount(value)}
-            placeholder="0.1"
-          />
+          <EtherInput value={stakeAmount} onChange={value => setStakeAmount(value)} placeholder="0.1" />
           <label className="label">
-            <span className="label-text-alt">
-              Available: {userBalance ? formatEther(userBalance) : "0"} ETH
-            </span>
+            <span className="label-text-alt">Available: {userBalance ? formatEther(userBalance) : "0"} ETH</span>
             <span className="label-text-alt">Minimum: 0.001 ETH</span>
           </label>
         </div>
@@ -129,4 +123,3 @@ export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => 
     </div>
   );
 };
-

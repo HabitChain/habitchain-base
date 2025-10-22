@@ -4,10 +4,10 @@ pragma solidity ^0.8.19;
 import "./HabitChain.Base.t.sol";
 
 /**
- * @title HabitChainGlobalSettleTest
- * @notice Tests for global settlement functionality (PRIMARY SETTLEMENT MECHANISM)
+ * @title HabitChainNaturalSettleTest
+ * @notice Tests for natural settlement functionality (PRIMARY SETTLEMENT MECHANISM)
  */
-contract HabitChainGlobalSettleTest is HabitChainBaseTest {
+contract HabitChainNaturalSettleTest is HabitChainBaseTest {
     function test_HappyPathFromTestingDoc() public {
         // This is the exact scenario from TESTING_HAPPY_PATH.md
         
@@ -32,8 +32,8 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         vm.stopPrank();
         
-        // Trigger global settlement
-        habitChain.globalSettle();
+        // Trigger natural settlement
+        habitChain.naturalSettle();
         
         // Verify habit 1: stays active, yield to user
         HabitChain.Habit memory h1After = getHabit(habit1);
@@ -74,7 +74,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // All habits should remain active with stake
         assertEq(getHabit(habit1).stakeAmount, 0.5 ether);
@@ -100,7 +100,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // All habits should be slashed
         assertEq(getHabit(habit1).stakeAmount, 0);
@@ -128,7 +128,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         vm.stopPrank();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Verify successes
         assertEq(getHabit(habit1).stakeAmount, 0.5 ether, "Habit 1 should retain stake");
@@ -141,7 +141,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
 
     function test_SettlementWithNoActiveHabits() public {
         // Call global settle with no habits created
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Should complete without error
         assertTrue(true, "Settlement with no habits should succeed");
@@ -158,13 +158,13 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         vm.stopPrank();
         
         // First settlement - slashes both habits
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         assertEq(getHabit(habit1).stakeAmount, 0);
         assertEq(getHabit(habit2).stakeAmount, 0);
         
         // Second settlement - should skip already slashed habits
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Habits should still be active but slashed
         assertTrue(getHabit(habit1).isActive);
@@ -173,23 +173,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         assertEq(getHabit(habit2).stakeAmount, 0);
     }
 
-    function test_SettlementWithAlreadySettledHabits() public {
-        uint256 habitId = setupBasicHabit(user1, 1 ether, "Exercise", 0.5 ether);
-        
-        vm.prank(user1);
-        habitChain.forceSettle(habitId, true);
-        
-        // Habit is now settled and inactive
-        assertFalse(getHabit(habitId).isActive);
-        assertTrue(getHabit(habitId).isSettled);
-        
-        // Global settlement should skip this habit
-        habitChain.globalSettle();
-        
-        // State should remain unchanged
-        assertFalse(getHabit(habitId).isActive);
-        assertTrue(getHabit(habitId).isSettled);
-    }
+    // Note: test_SettlementWithAlreadySettledHabits removed - permanent settlement no longer exists
 
     function test_MultipleUsersWithHabits() public {
         // User 1 creates habits
@@ -209,7 +193,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         habitChain.checkIn(u2h2); // Check in both habits
         vm.stopPrank();
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Verify user1's habits
         assertEq(getHabit(u1h1).stakeAmount, 0.5 ether, "User1 habit1 should retain stake");
@@ -230,7 +214,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         skipSeconds(86400);
         
         // Global settlement - should consider this as success (within 24h from now)
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Habit should retain stake (checked in within last 24 hours)
         assertEq(getHabit(habitId).stakeAmount, 0.5 ether);
@@ -246,7 +230,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         skipSeconds(90000);
         
         // Global settlement - should consider this as failure (more than 24h ago)
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Habit should be slashed
         assertEq(getHabit(habitId).stakeAmount, 0);
@@ -258,7 +242,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         vm.prank(user1);
         habitChain.checkIn(habitId);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Habit should remain active (not permanently settled)
         assertTrue(getHabit(habitId).isActive, "Should remain active");
@@ -271,7 +255,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         // Don't check in
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Habit should be active but slashed (stake = 0)
         assertTrue(getHabit(habitId).isActive, "Should remain active");
@@ -294,7 +278,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         assertEq(getHabit(habitId).checkInCount, 3, "Should have 3 check-ins");
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Check-in count should persist
         assertEq(getHabit(habitId).checkInCount, 3, "Check-in count should persist");
@@ -308,7 +292,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         
         uint256 lastCheckInBefore = getHabit(habitId).lastCheckIn;
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         // Last check-in timestamp should persist
         assertEq(getHabit(habitId).lastCheckIn, lastCheckInBefore, "Last check-in should persist");
@@ -325,7 +309,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         // Skip time for liquidity index to potentially change
         skipDays(30);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 liquidityIndexAfter = getHabit(habitId).liquidityIndex;
         
@@ -344,7 +328,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         // Skip time for yield accrual
         skipDays(30);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 userBalanceAfter = habitChain.getUserBalance(user1);
         
@@ -362,7 +346,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         // Skip time for yield accrual
         skipDays(30);
         
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         
@@ -370,18 +354,22 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         assertGe(treasuryAfter - treasuryBefore, 1 ether - 1e15, "Treasury should receive stake + yield");
     }
 
-    function test_GlobalSettlementCompletedEventEmission() public {
+    function test_NaturalSettlementCompletedEventEmission() public {
         vm.startPrank(user1);
         habitChain.deposit{ value: 3 ether }();
         habitChain.createHabit("Habit 1", 0.5 ether);
         habitChain.createHabit("Habit 2", 0.5 ether);
         habitChain.createHabit("Habit 3", 0.5 ether);
+        // Check in all habits to make them eligible
+        habitChain.checkIn(1);
+        habitChain.checkIn(2);
+        habitChain.checkIn(3);
         vm.stopPrank();
-        
+
         vm.expectEmit(false, false, false, false);
-        emit GlobalSettlementCompleted(0, 0, 0, block.timestamp);
-        
-        habitChain.globalSettle();
+        emit NaturalSettlementCompleted(3, 3, 0, block.timestamp);
+
+        habitChain.naturalSettle();
     }
 
     function test_SequentialDailySettlementsOverMultipleDays() public {
@@ -393,7 +381,7 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         // Day 1: Check in and settle
         habitChain.checkIn(habitId);
         vm.stopPrank();
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Day 1: Should retain stake");
         
         skipDays(1);
@@ -401,13 +389,13 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         // Day 2: Check in and settle
         vm.prank(user1);
         habitChain.checkIn(habitId);
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Day 2: Should retain stake");
         
         skipDays(1);
         
         // Day 3: Don't check in, settle
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         assertEq(getHabit(habitId).stakeAmount, 0, "Day 3: Should be slashed");
         
         skipDays(1);
@@ -417,8 +405,118 @@ contract HabitChainGlobalSettleTest is HabitChainBaseTest {
         habitChain.refundHabit(habitId, 0.5 ether);
         habitChain.checkIn(habitId);
         vm.stopPrank();
-        habitChain.globalSettle();
+        habitChain.naturalSettle();
         assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Day 4: Should retain stake after refund");
+    }
+
+    function test_SetCheckInPeriod() public {
+        uint256 initialPeriod = habitChain.checkInPeriod();
+        assertEq(initialPeriod, 1 days, "Initial period should be 1 day");
+        
+        uint256 newPeriod = 5 seconds;
+        
+        vm.expectEmit(true, true, false, false);
+        emit CheckInPeriodUpdated(initialPeriod, newPeriod);
+        
+        habitChain.setCheckInPeriod(newPeriod);
+        
+        assertEq(habitChain.checkInPeriod(), newPeriod, "Period should be updated");
+    }
+
+    function test_NaturalSettleWithCustomPeriod_5Seconds() public {
+        // Set check-in period to 5 seconds
+        habitChain.setCheckInPeriod(5 seconds);
+
+        vm.startPrank(user1);
+        habitChain.deposit{ value: 1 ether }();
+        uint256 habitId = habitChain.createHabit("Quick Test", 0.5 ether);
+
+        // Check in
+        habitChain.checkIn(habitId);
+        vm.stopPrank();
+
+        // Natural settle should work immediately for checked-in habits (success)
+        habitChain.naturalSettle();
+
+        // Verify habit still has stake (successful settlement)
+        assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Should retain stake after successful settlement");
+    }
+
+    function test_NaturalSettleWithCustomPeriod_FailureScenario() public {
+        // Set check-in period to 5 seconds
+        habitChain.setCheckInPeriod(5 seconds);
+
+        vm.startPrank(user1);
+        habitChain.deposit{ value: 1 ether }();
+        uint256 habitId = habitChain.createHabit("Quick Test", 0.5 ether);
+        // Don't check in
+        vm.stopPrank();
+
+        // Wait 6 seconds (past the 5 second grace period)
+        skipSeconds(6);
+
+        // Natural settle should slash the habit (not checked in)
+        habitChain.naturalSettle();
+
+        // Verify habit was slashed
+        assertEq(getHabit(habitId).stakeAmount, 0, "Should be slashed");
+    }
+
+    function test_NaturalSettleWorksImmediatelyForCheckedInHabits() public {
+        vm.startPrank(user1);
+        habitChain.deposit{ value: 1 ether }();
+        uint256 habitId = habitChain.createHabit("New Habit", 0.5 ether);
+        habitChain.checkIn(habitId);
+        vm.stopPrank();
+
+        // Natural settle should work immediately for checked-in habits
+        habitChain.naturalSettle();
+
+        // Verify habit retains stake (successful settlement)
+        assertEq(getHabit(habitId).stakeAmount, 0.5 ether, "Should retain stake");
+    }
+
+    function testRevert_NaturalSettleWithNoEligibleHabits() public {
+        vm.startPrank(user1);
+        habitChain.deposit{ value: 1 ether }();
+        uint256 habitId = habitChain.createHabit("New Habit", 0.5 ether);
+        // Don't check in
+        vm.stopPrank();
+
+        // Try to settle immediately (habit not checked in and grace period not passed)
+        vm.expectRevert(HabitChain.NoHabitsEligibleForSettlement.selector);
+        habitChain.naturalSettle();
+    }
+
+    function test_CheckInWithCustomPeriod() public {
+        // Set check-in period to 10 seconds
+        habitChain.setCheckInPeriod(10 seconds);
+        
+        vm.startPrank(user1);
+        habitChain.deposit{ value: 1 ether }();
+        uint256 habitId = habitChain.createHabit("Quick Test", 0.5 ether);
+        
+        // First check-in
+        habitChain.checkIn(habitId);
+        
+        // Try to check in again before period expires (should fail)
+        skipSeconds(5);
+        vm.expectRevert(HabitChain.AlreadyCheckedInToday.selector);
+        habitChain.checkIn(habitId);
+        
+        // Wait until period expires
+        skipSeconds(6); // Total 11 seconds
+        
+        // Second check-in should succeed
+        habitChain.checkIn(habitId);
+        assertEq(getHabit(habitId).checkInCount, 2, "Should have 2 check-ins");
+        
+        vm.stopPrank();
+    }
+
+    function testRevert_SetCheckInPeriodZero() public {
+        vm.expectRevert("Period must be greater than 0");
+        habitChain.setCheckInPeriod(0);
     }
 }
 

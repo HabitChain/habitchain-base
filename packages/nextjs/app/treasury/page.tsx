@@ -1,8 +1,8 @@
 "use client";
 
-import { formatEther } from "viem";
 import type { NextPage } from "next";
-import { useScaffoldReadContract, useScaffoldEventHistory } from "~~/hooks/scaffold-eth";
+import { formatEther } from "viem";
+import { useScaffoldEventHistory, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 const Treasury: NextPage = () => {
   // Read treasury balance
@@ -188,4 +188,3 @@ const Treasury: NextPage = () => {
 };
 
 export default Treasury;
-
