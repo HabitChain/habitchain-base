@@ -170,8 +170,8 @@ contract HabitChainYieldTest is Test {
         console.log("Expected value:", expectedValue);
         console.log("Expected yield:", expectedYield);
 
-        // Force settle (success)
-        habitChain.forceSettle(habitId, true);
+        // Natural settle (success - habit was checked in)
+        habitChain.naturalSettle();
 
         // Check user received stake + yield
         uint256 finalBalance = habitChain.getUserBalance(user1);
@@ -217,8 +217,8 @@ contract HabitChainYieldTest is Test {
 
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
 
-        // Force settle (fail)
-        habitChain.forceSettle(habitId, false);
+        // Natural settle (fail - habit was not checked in)
+        habitChain.naturalSettle();
 
         uint256 treasuryAfter = habitChain.getTreasuryBalance();
         uint256 treasuryIncrease = treasuryAfter - treasuryBefore;
@@ -263,8 +263,8 @@ contract HabitChainYieldTest is Test {
         uint256 user3BalanceBefore = habitChain.getUserBalance(user3);
         uint256 treasuryBefore = habitChain.getTreasuryBalance();
 
-        // Perform global settlement
-        habitChain.globalSettle();
+        // Perform natural settlement
+        habitChain.naturalSettle();
 
         // Check post-settlement state
         uint256 user1BalanceAfter = habitChain.getUserBalance(user1);
@@ -446,7 +446,7 @@ contract HabitChainYieldTest is Test {
         console.log("Value:", value);
         console.log("Yield:", yield);
 
-        habitChain.forceSettle(habitId, true);
+        habitChain.naturalSettle();
 
         // Yield should be minimal or zero
         assertLe(yield, 1e15, "Yield should be minimal for immediate settlement");
