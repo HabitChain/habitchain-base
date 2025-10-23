@@ -10,7 +10,7 @@ EMAIL="$2"
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
     echo "Usage: $0 <domain> <email>"
-    echo "Example: $0 habitchain.example.com admin@example.com"
+    echo "Example: $0 base.habitchain.xyz admin@example.com"
     exit 1
 fi
 

@@ -6,7 +6,7 @@
 set -e
 
 SSL_DIR="./nginx/ssl"
-DOMAIN="${1:-localhost}"
+DOMAIN="${1:-base.habitchain.xyz}"
 
 echo "Generating self-signed SSL certificate for domain: $DOMAIN"
 
