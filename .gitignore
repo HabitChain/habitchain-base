@@ -22,4 +22,18 @@ node_modules
 # cli
 dist
 
+# environment variables
 .env
+.env.production
+.env*.local
+
+# nginx
+nginx/logs/*.log
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/letsencrypt/
+nginx/ssl/certbot/
+
+# docker
+*.log

@@ -1,0 +1,27 @@
+node_modules
+.next
+.git
+.gitignore
+README.md
+*.md
+*.log
+.env*.local
+.DS_Store
+*.pem
+coverage
+.turbo
+dist
+build
+nginx/logs
+nginx/ssl/*.pem
+packages/foundry/broadcast
+packages/foundry/cache
+packages/foundry/lib
+packages/foundry/.env*
+packages/foundry/test
+
+# Keep .yarn directory for Yarn 3 zero-installs and patches
+!.yarn
+.yarn/cache
+.yarn/install-state.gz
+
