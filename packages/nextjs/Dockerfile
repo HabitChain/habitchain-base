@@ -13,19 +13,24 @@ WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 
 # Copy yarn directory if using zero-installs or patches
-COPY .yarn ./.yarn
+# COPY .yarn ./.yarn
 
-# Copy all workspace package.json files (Yarn needs to see the entire workspace structure)
+# Create directory structure and copy package.json files
+RUN mkdir -p packages/nextjs packages/foundry
 COPY packages/nextjs/package.json ./packages/nextjs/
 COPY packages/foundry/package.json ./packages/foundry/
 
-# Install dependencies (skip immutability checks in Docker since we're in a clean build environment)
-RUN yarn install
+# Create .env.example to prevent Foundry postinstall from failing
+RUN touch packages/foundry/.env.example
+
+# Install all dependencies
+RUN yarn install --immutable
 
 # Copy nextjs source
 COPY packages/nextjs ./packages/nextjs
 
 # Copy contracts (needed for deployedContracts.ts)
+RUN mkdir -p packages/foundry/contracts packages/foundry/out
 COPY packages/foundry/contracts ./packages/foundry/contracts
 COPY packages/foundry/out ./packages/foundry/out
 
