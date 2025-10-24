@@ -952,7 +952,7 @@ const deployedContracts = {
   },
   84532: {
     HabitChain: {
-      address: "0x5b4267afea75c965f14eef581c22968bc2e1568b",
+      address: "0x6f7db63504902906b48193bb61771df5c67ec2c2",
       abi: [
         {
           type: "constructor",
@@ -1892,7 +1892,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 32787407,
+      deployedOnBlock: 32787704,
     },
   },
 } as const;
