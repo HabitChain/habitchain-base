@@ -1,8 +1,0 @@
-- Don't run dev server commands, let me do it. If you want to run something, ask me first
-- You won't be able to run smart contract deployment commands, when needed. Ask me that will do it for you.
-- Run npm run typecheck after making changes in the frontend and fix errors. Avoid any types.
-- Run npm run compile:check after making changes in the contracts and fix errors.
-- When updating a smart contract code, remember to generate the ABI and update the FE accordingly.
-- Don't write .md files unless asked to.
-- If updating a smart contract, after compile and testing, run `yarn deploy` to deploy the contract.
-- When asked to test the happy path, refer to TESTING_HAPPY_PATH.md and test it in the browser.
