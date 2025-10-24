@@ -319,7 +319,7 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
         {/* Pending Settlement Alert */}
         {isActive && !isSlashed && isPendingSettlement && (
           <div className="alert alert-warning mb-4">
-            <span className="text-sm">⏳ Pending settlement - please click "Natural Settle" first</span>
+            <span className="text-sm">⏳ Pending settlement - please click 'Natural Settle' first</span>
           </div>
         )}
 
