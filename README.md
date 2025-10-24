@@ -1,135 +1,74 @@
-# 🔗 HabitChain - Stake on Yourself
+# HabitChain (Base)
 
-**Build habits with real skin in the game** 💪
+HabitChain is a dApp that turns self‑discipline into a financial commitment.
 
-> A DeFi-powered habit tracking protocol built on Base with Aave V3 yield integration.
+Users lock funds on their own habit, complete daily check‑ins, and—if successful—reclaim their stake plus yield.  
+If they fail, the locked fund is slashed to the protocol treasury (or, in groups, redistributed to successful peers).
 
-HabitChain turns self-discipline into financial commitment. Users stake ETH on their habits, earn yield through Aave, and either reclaim their stake + yield (success) or lose it to the treasury (failure).
+The prototype proves one essential on‑chain action: **commit → check‑in → settle**
 
----
+By adding real consequences and immediate feedback, HabitChain closes the “motivation gap”, aligning personal progress with tangible rewards.
 
-## 📚 Documentation
+## Details
 
-- **[HABITCHAIN_README.md](./HABITCHAIN_README.md)** - Complete product documentation
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guide for Base networks
-- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
-- **[HIGH_LEVEL_VIEW.md](./HIGH_LEVEL_VIEW.md)** - Product vision and roadmap
-- **[LIQUIDITY.md](./LIQUIDITY.md)** - Aave V3 integration strategy
+- Network: Base Sepolia Testnet
+- Address: [0x6F7DB63504902906B48193bB61771dF5c67eC2C2](https://sepolia.basescan.org/address/0x6F7DB63504902906B48193bB61771dF5c67eC2C2)
+- ABI: [https://github.com/HabitChain/habitchain-base/blob/2b86b7db15862e9a20ce2c2c4e2c461840feec26/packages/nextjs/contracts/deployedContracts.ts#L956](https://github.com/HabitChain/habitchain-base/blob/2b86b7db15862e9a20ce2c2c4e2c461840feec26/packages/nextjs/contracts/deployedContracts.ts#L956)
+- Video (Pitch + Demo): [https://youtu.be/-MpjpKS_bgE](https://youtu.be/-MpjpKS_bgE)
+- Prototype features working Aave V3 integration for yield generation
 
----
+## Testing Instructions
 
-## 🚀 Quick Start
+1. Go to https://112f405c.habitchain-base.pages.dev/
+2. Setup/connect wallet and get Base Sepolia ETH from a faucet
+3. Deposit funds
+4. Change the "Check-in Period" to 30 or 60 seconds for faster testing
+5. Create two habits
+6. Check-in one habit, but don't do the other
+7. Wait the check-in period to pass and click on "Natural Settle" to settle the habits
+8. Notice one habit slashed and the other kept active
 
-```bash
-# Install dependencies
-pnpm install
+Note: you might need to refresh the page in between some steps if the UI don't update
+Note: currently there's no way to see the yield rewards, but the Aave integration is in place.
 
-# Start local blockchain (forked Base)
-pnpm fork
+## Technology Stack
 
-# Deploy contracts (in new terminal)
-pnpm deploy
+This project was bootstraped with [scaffold-eth-2](https://github.com/scaffold-eth/scaffold-eth-2) and includes the following:
 
-# Start frontend (in new terminal)
-pnpm start
-```
+- [Next.js](https://nextjs.org/) (v15.2.4) - React framework for the frontend
+- [React](https://react.dev/) (v19.0.0) - UI library
+- [TypeScript](https://www.typescriptlang.org/) (v5) - Type-safe JavaScript
+- [Foundry](https://getfoundry.sh/) - Ethereum smart contract development framework
+- [Solidity](https://soliditylang.org/) - Smart contract language for EVM chains
+- [RainbowKit](https://www.rainbowkit.com/) - Wallet connection library
+- [Wagmi](https://wagmi.sh/) - React hooks for Ethereum
+- [Viem](https://viem.sh/) - TypeScript interface for Ethereum
+- [OnChainKit](https://onchainkit.xyz/) - Base/Coinbase onchain toolkit
+- [Aave V3](https://aave.com/) - DeFi lending protocol integration for yield generation
+- [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [daisyUI](https://daisyui.com/) - Tailwind CSS component library
 
-Visit `http://localhost:3000` to use HabitChain!
+## Team
 
-### Time Travel Commands (for testing)
+- [Markkop](https://github.com/Markkop)
+- [dutragustavo](https://github.com/dutragustavo)
+- [hpereira1](https://github.com/hpereira1)
+- [artur-simon](https://github.com/artur-simon)
 
-When running the forked local blockchain, you can use these commands to manipulate time:
+## References
 
-```bash
-# Skip forward 1 day (86400 seconds) and mine a block
-pnpm skip
+- [Base Batches 2025](https://www.basebatches.xyz/)
+- [The effectiveness of financial incentives for health behaviour change: systematic review and meta-analysis](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090347)
+- [Prospect Theory: An Analysis of Decision Under Risk](https://www.jstor.org/stable/1914185)
+- [The intention–behavior gap](https://psycnet.apa.org/record/2016-43197-003)
 
-# Mine a single block (without time advancement)
-pnpm mine
-```
+## Development Setup Instructions
 
-These are useful for testing time-based functionality like habit check-ins and deadline expiration.
-
-### Cursor Slash Commands
-
-- `/happy` - Happy path testing
-
----
-
-## 🏗 Built With Scaffold-ETH 2
-
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Scaffold-ETH Docs</a> |
-  <a href="https://scaffoldeth.io">Scaffold-ETH Website</a>
-</h4>
-
-⚙️ Tech Stack: NextJS, RainbowKit, Foundry, Wagmi, Viem, TypeScript, OnChainKit
-
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
-
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
-
-## Requirements
-
-Before you begin, you need to install the following tools:
-
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- pnpm ([installation guide](https://pnpm.io/installation))
-- [Git](https://git-scm.com/downloads)
-
-## Quickstart
-
-To get started with Scaffold-ETH 2, follow the steps below:
-
-1. Install dependencies if it was skipped in CLI:
-
-```
-cd my-dapp-example
-pnpm install
-```
-
-2. Run a local network in the first terminal:
-
-```
-pnpm fork
-```
-
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
-
-3. On a second terminal, deploy the test contract:
-
-```
-pnpm deploy
-```
-
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `pnpm deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
-pnpm start
-```
-
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
-
-Run smart contract test with `pnpm foundry:test`
-
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
-
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+- Clone the repository
+- Run `pnpm install` to install the dependencies
+- Run `pnpm start` to run the frontend
+- Visit `http://localhost:3000` to see the app
+- Run `pnpm fork` or `pnpm fork:fast` to run the local Base network (forked from Base mainnet)
+- Run `pnpm run deploy` to deploy the contracts
+- When running locally, use `targetNetworks: [chains.hardhat]` in `packages/nextjs/scaffold.config.ts`
+- But when deploying to the testnet, use `targetNetworks: [chains.baseSepolia]`
