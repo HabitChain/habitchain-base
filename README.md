@@ -22,20 +22,19 @@ HabitChain turns self-discipline into financial commitment. Users stake ETH on t
 
 ```bash
 # Install dependencies
-yarn install
+pnpm install
 
 # Start local blockchain (forked Base)
-yarn fork
+pnpm fork
 
 # Deploy contracts (in new terminal)
-yarn deploy
+pnpm deploy
 
 # Start frontend (in new terminal)
-yarn start
+pnpm start
 ```
 
 Visit `http://localhost:3000` to use HabitChain!
-yar
 
 ### Time Travel Commands (for testing)
 
@@ -43,10 +42,10 @@ When running the forked local blockchain, you can use these commands to manipula
 
 ```bash
 # Skip forward 1 day (86400 seconds) and mine a block
-yarn skip
+pnpm skip
 
 # Mine a single block (without time advancement)
-yarn mine
+pnpm mine
 ```
 
 These are useful for testing time-based functionality like habit check-ins and deadline expiration.
@@ -79,7 +78,7 @@ These are useful for testing time-based functionality like habit check-ins and d
 Before you begin, you need to install the following tools:
 
 - [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
+- pnpm ([installation guide](https://pnpm.io/installation))
 - [Git](https://git-scm.com/downloads)
 
 ## Quickstart
@@ -90,13 +89,13 @@ To get started with Scaffold-ETH 2, follow the steps below:
 
 ```
 cd my-dapp-example
-yarn install
+pnpm install
 ```
 
 2. Run a local network in the first terminal:
 
 ```
-yarn fork
+pnpm fork
 ```
 
 This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
@@ -104,20 +103,20 @@ This command starts a local Ethereum network using Foundry. The network runs on 
 3. On a second terminal, deploy the test contract:
 
 ```
-yarn deploy
+pnpm deploy
 ```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
+This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `pnpm deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
 
 4. On a third terminal, start your NextJS app:
 
 ```
-yarn start
+pnpm start
 ```
 
 Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
 
-Run smart contract test with `yarn foundry:test`
+Run smart contract test with `pnpm foundry:test`
 
 - Edit your smart contracts in `packages/foundry/contracts`
 - Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.

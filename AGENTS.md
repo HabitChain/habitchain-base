@@ -12,23 +12,23 @@ HabitChain is a DeFi-powered habit tracking protocol built on Base where users s
 
 ```bash
 # Start local forked Base blockchain (terminal 1)
-yarn fork
+pnpm fork
 
 # Start local forked Base blockchain with 3x faster mining (instant block mining)
-yarn fork:fast
+pnpm fork:fast
 
 # Deploy contracts (terminal 2)
-yarn deploy
+pnpm deploy
 
 # Start frontend dev server (terminal 3)
-yarn start
+pnpm start
 ```
 
 ### Testing
 
 ```bash
 # Run all Foundry tests with forked Base mainnet
-yarn test
+pnpm test
 
 # Run specific test with verbose output
 cd packages/foundry
@@ -42,33 +42,33 @@ BASE_RPC_URL=https://mainnet.base.org forge test --match-path test/HabitChain.t.
 
 ```bash
 # Compile smart contracts (after contract changes)
-yarn compile
+pnpm compile
 
 # Check frontend types (after frontend changes)
-yarn next:check-types
+pnpm next:check-types
 
 # Format code
-yarn format
+pnpm format
 ```
 
 ### Time Manipulation (Local Fork Testing)
 
 ```bash
 # Skip forward 1 day (86400 seconds) and mine a block
-yarn skip
+pnpm skip
 
 # Mine a single block without advancing time
-yarn mine
+pnpm mine
 ```
 
 ### Deployment
 
 ```bash
 # Deploy to Base Sepolia testnet
-yarn deploy --network baseSepolia
+pnpm deploy --network baseSepolia
 
 # Deploy to Base mainnet
-yarn deploy --network base
+pnpm deploy --network base
 ```
 
 ## Architecture
@@ -177,7 +177,7 @@ await writeContractAsync({
 
 After modifying smart contracts:
 
-1. Run `yarn compile` to generate new ABIs
+1. Run `pnpm compile` to generate new ABIs
 2. Deployment automatically updates `packages/nextjs/contracts/deployedContracts.ts`
 3. Frontend hooks auto-detect the new ABI structure
 4. TypeScript types are auto-generated for type-safe contract interactions
@@ -189,7 +189,7 @@ After modifying smart contracts:
 - Smart contracts use `block.timestamp` for time-based logic
 - ONE_DAY constant = 1 days (86400 seconds)
 - Check-ins enforce minimum 1-day gap using: `require(block.timestamp >= habit.lastCheckIn + ONE_DAY)`
-- On local fork, use `yarn skip` to advance time for testing
+- On local fork, use `pnpm skip` to advance time for testing
 
 ### User Workflow
 
@@ -209,10 +209,10 @@ After modifying smart contracts:
 
 ## Project-Specific Rules from .cursorrules
 
-1. **Check dev servers** - In one command, check if localhost 3000 and 8545 are running and if not, run `yarn fork` and `yarn start`. Check and run individually.
-2. **Deploy contracts** - After contract changes, run `yarn deploy` to deploy the contract.
-3. **Run `yarn next:check-types`** after frontend changes (avoid `any` types)
-4. **Run `yarn compile`** after contract changes
+1. **Check dev servers** - In one command, check if localhost 3000 and 8545 are running and if not, run `pnpm fork` and `pnpm start`. Check and run individually.
+2. **Deploy contracts** - After contract changes, run `pnpm deploy` to deploy the contract.
+3. **Run `pnpm next:check-types`** after frontend changes (avoid `any` types)
+4. **Run `pnpm compile`** after contract changes
 5. **Update ABIs**: After contract updates, run compile and ensure frontend picks up new ABI
 6. **No .md files** unless explicitly asked
 7. **After contract updates**: compile → test → deploy

@@ -4,16 +4,13 @@ FROM node:20-alpine AS builder
 # Install dependencies required for node-gyp
 RUN apk add --no-cache python3 make g++
 
-# Enable Corepack for Yarn 3.x support
-RUN corepack enable && corepack prepare yarn@3.2.3 --activate
+# Enable Corepack for pnpm support
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 WORKDIR /app
 
-# Copy root package files (includes .yarnrc.yml for Yarn 3)
-COPY package.json yarn.lock .yarnrc.yml ./
-
-# Copy yarn directory if using zero-installs or patches
-# COPY .yarn ./.yarn
+# Copy root package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Create directory structure and copy package.json files
 RUN mkdir -p packages/nextjs packages/foundry
@@ -24,7 +21,7 @@ COPY packages/foundry/package.json ./packages/foundry/
 RUN touch packages/foundry/.env.example
 
 # Install all dependencies
-RUN yarn install --immutable
+RUN pnpm install --frozen-lockfile
 
 # Copy nextjs source
 COPY packages/nextjs ./packages/nextjs
@@ -37,7 +34,7 @@ COPY packages/foundry/out ./packages/foundry/out
 WORKDIR /app/packages/nextjs
 
 # Build the Next.js application
-RUN yarn build
+RUN pnpm build
 
 # Production stage
 FROM node:20-alpine AS runner

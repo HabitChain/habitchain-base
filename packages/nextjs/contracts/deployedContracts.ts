@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     HabitChain: {
-      address: "0x859571d50bf5e7926d4b455a62f1fa4d11c5023f",
+      address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
       abi: [
         {
           type: "constructor",
@@ -849,7 +849,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 37179391,
+      deployedOnBlock: 1,
     },
   },
 } as const;
