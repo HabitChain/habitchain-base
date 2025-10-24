@@ -32,16 +32,25 @@ export const Dashboard = () => {
   });
 
   // Read user balance
-  const { data: userBalance } = useScaffoldReadContract({
+  const { data: userBalance, refetch: refetchUserBalance } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getUserBalance",
     args: [connectedAddress],
+    watch: true,
   });
 
   // Read check-in period
   const { data: checkInPeriod } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "checkInPeriod",
+    watch: true,
+  });
+
+  // Read cycle info
+  const { data: cycleInfo, refetch: refetchCycleInfo } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "getCycleInfo",
+    watch: true,
   });
 
   // Fetch blockchain timestamp for debugging
@@ -67,17 +76,19 @@ export const Dashboard = () => {
   }, [publicClient]);
 
   // Read user habits
-  const { data: userHabitIds } = useScaffoldReadContract({
+  const { data: userHabitIds, refetch: refetchUserHabits } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getUserHabits",
     args: [connectedAddress],
+    watch: true,
   });
 
   // Read active habits count (excludes slashed habits)
-  const { data: activeHabitsCount } = useScaffoldReadContract({
+  const { data: activeHabitsCount, refetch: refetchActiveHabitsCount } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getUserActiveHabitsCount",
     args: [connectedAddress],
+    watch: true,
   });
 
   const handleQuickDeposit = async () => {
@@ -93,6 +104,8 @@ export const Dashboard = () => {
         functionName: "deposit",
         value: defaultAmount,
       });
+      // Force refetch to get latest blockchain state
+      await refetchUserBalance();
       notification.success("Quick deposit of 0.01 ETH completed!");
     } catch (error) {
       console.error("Error depositing:", error);
@@ -118,6 +131,8 @@ export const Dashboard = () => {
         functionName: "createHabit",
         args: [habitName, defaultStake],
       });
+      // Force refetch to get latest blockchain state
+      await Promise.all([refetchUserBalance(), refetchUserHabits(), refetchActiveHabitsCount()]);
       notification.success(`Quick habit "${habitName}" created!`);
     } catch (error) {
       console.error("Error creating habit:", error);
@@ -138,7 +153,10 @@ export const Dashboard = () => {
       await writeHabitChainAsync({
         functionName: "naturalSettle",
       });
-      notification.success("Natural settlement completed successfully!");
+      // Force refetch ALL data to get latest blockchain state
+      // This is critical as settlement affects habits, balances, and cycle info
+      await Promise.all([refetchUserBalance(), refetchUserHabits(), refetchActiveHabitsCount(), refetchCycleInfo()]);
+      notification.success("Natural settlement completed successfully! UI refreshed with blockchain state.");
     } catch (error) {
       console.error("Error settling habits:", error);
       notification.error("Failed to settle habits. No eligible habits or transaction failed.");
@@ -269,8 +287,33 @@ export const Dashboard = () => {
 
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
-              <h3 className="card-title text-sm">Check-in Period</h3>
-              <div className="flex gap-1 mt-2">
+              <h3 className="card-title text-sm">Global Cycle Info</h3>
+
+              {/* Current Cycle Display */}
+              <div className="mb-2">
+                <div className="text-xs opacity-70">Current Cycle:</div>
+                <div className="text-2xl font-bold text-primary">
+                  {cycleInfo ? `Cycle ${cycleInfo[0].toString()}` : "Loading..."}
+                </div>
+              </div>
+
+              {/* Cycle End Time */}
+              {cycleInfo && (
+                <div className="mb-2">
+                  <div className="text-xs opacity-70">Cycle ends:</div>
+                  <div className="text-xs font-semibold">
+                    {new Date(Number(cycleInfo[2]) * 1000).toLocaleTimeString()}
+                  </div>
+                  <div className="text-xs opacity-60">
+                    {Math.max(0, Number(cycleInfo[2]) - blockchainTimestamp)}s remaining
+                  </div>
+                </div>
+              )}
+
+              {/* Check-in Period Controls */}
+              <div className="divider my-1"></div>
+              <div className="text-xs opacity-70 mb-1">Period:</div>
+              <div className="flex gap-1">
                 <button
                   className={`btn btn-xs ${checkInPeriod === 5n ? "btn-success" : "btn-outline"}`}
                   onClick={() => handleSetCheckInPeriod(5n)}
@@ -305,9 +348,11 @@ export const Dashboard = () => {
                   )}
                 </button>
               </div>
-              <div className="divider my-2"></div>
+
+              {/* Time Controls */}
+              <div className="divider my-1"></div>
               <div className="text-xs opacity-70">🕒 {new Date(blockchainTimestamp * 1000).toLocaleString()}</div>
-              <div className="flex gap-1 mt-2 flex-wrap">
+              <div className="flex gap-1 mt-1 flex-wrap">
                 <button className="btn btn-xs btn-outline" onClick={handleMineBlock} disabled={isMining}>
                   {isMining ? <span className="loading loading-spinner loading-xs"></span> : "⛏️"}
                 </button>
@@ -371,10 +416,10 @@ export const Dashboard = () => {
       {/* Info Text */}
       <div className="mb-6">
         <p className="text-xs opacity-60 max-w-2xl">
-          💡 <span className="font-semibold">Check-in cycles are global</span> (
-          {checkInPeriod ? `${Number(checkInPeriod)}s` : "loading..."} period). After creating or checking in, you must
-          wait one period before checking in again. Natural Settle processes habits past their deadline. Quick buttons
-          use default values for instant actions.
+          💡 <span className="font-semibold">All habits share synchronized cycles</span> (
+          {checkInPeriod ? `${Number(checkInPeriod)}s` : "loading..."} each). You can check in once per cycle. Natural
+          Settle evaluates all habits at cycle boundaries - those checked in during the previous cycle succeed, others
+          are slashed. Quick buttons use default values for instant actions.
         </p>
       </div>
 

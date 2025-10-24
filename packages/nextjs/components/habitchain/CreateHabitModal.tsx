@@ -20,11 +20,12 @@ export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => 
     contractName: "HabitChain",
   });
 
-  // Read user balance
+  // Read user balance - watch for blockchain changes
   const { data: userBalance } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getUserBalance",
     args: [connectedAddress],
+    watch: true,
   });
 
   const handleCreateHabit = async () => {

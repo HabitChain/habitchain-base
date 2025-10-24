@@ -19,6 +19,7 @@ export const WithdrawModal = ({ isOpen, onClose }: WithdrawModalProps) => {
     contractName: "HabitChain",
     functionName: "getUserBalance",
     args: [connectedAddress],
+    watch: true,
   });
 
   const { writeContractAsync: writeHabitChainAsync, isPending } = useScaffoldWriteContract({

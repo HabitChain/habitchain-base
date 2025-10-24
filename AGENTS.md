@@ -17,8 +17,8 @@ pnpm fork
 # Start local forked Base blockchain with 3x faster mining (instant block mining)
 pnpm fork:fast
 
-# Deploy contracts (terminal 2)
-pnpm deploy
+# Deploy contracts (terminal 2) - have to use "run" for deploy
+pnpm run deploy
 
 # Start frontend dev server (terminal 3)
 pnpm start
@@ -227,7 +227,7 @@ After modifying smart contracts:
 ## Project-Specific Rules from .cursorrules
 
 1. **Check dev servers** - In one command, check if localhost 3000 and 8545 are running and if not, run `pnpm fork` and `pnpm start`. Check and run individually.
-2. **Deploy contracts** - After contract changes, run `pnpm deploy` to deploy the contract.
+2. **Deploy contracts** - After contract changes, run `pnpm run deploy` to deploy the contract.
 3. **Run `pnpm next:check-types`** after frontend changes (avoid `any` types)
 4. **Run `pnpm compile`** after contract changes
 5. **Update ABIs**: After contract updates, run compile and ensure frontend picks up new ABI

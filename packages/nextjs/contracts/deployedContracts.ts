@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     HabitChain: {
-      address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
+      address: "0x262395843abdf953bc5c0d86bd367ab92382611f",
       abi: [
         {
           type: "constructor",
@@ -130,10 +130,59 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "cycleStartTime",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "deposit",
           inputs: [],
           outputs: [],
           stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "getCurrentCycle",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCycleInfo",
+          inputs: [],
+          outputs: [
+            {
+              name: "currentCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "cycleStart",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "cycleEnd",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -202,6 +251,16 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
+                  name: "lastCheckInCycle",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "lastSettledCycle",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
                   name: "isActive",
                   type: "bool",
                   internalType: "bool",
@@ -236,6 +295,30 @@ const deployedContracts = {
               name: "yieldEarned",
               type: "uint256",
               internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getHabitCycleStatus",
+          inputs: [
+            {
+              name: "habitId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "lastCheckInCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "checkedInThisCycle",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -368,6 +451,16 @@ const deployedContracts = {
             },
             {
               name: "lastSettled",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "lastCheckInCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "lastSettledCycle",
               type: "uint256",
               internalType: "uint256",
             },
@@ -839,6 +932,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "MustSettlePreviousCycle",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "NoHabitsEligibleForSettlement",
           inputs: [],
         },
@@ -849,12 +947,12 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 2,
+      deployedOnBlock: 37268633,
     },
   },
   84532: {
     HabitChain: {
-      address: "0x9bb1380ab57f5769cfe82bc32e3c2bdb76773572",
+      address: "0xf5375a5d9c7808225179d62353f39e8c4b9f4993",
       abi: [
         {
           type: "constructor",
@@ -977,10 +1075,59 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "cycleStartTime",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "deposit",
           inputs: [],
           outputs: [],
           stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "getCurrentCycle",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getCycleInfo",
+          inputs: [],
+          outputs: [
+            {
+              name: "currentCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "cycleStart",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "cycleEnd",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -1049,6 +1196,16 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
+                  name: "lastCheckInCycle",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "lastSettledCycle",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
                   name: "isActive",
                   type: "bool",
                   internalType: "bool",
@@ -1083,6 +1240,30 @@ const deployedContracts = {
               name: "yieldEarned",
               type: "uint256",
               internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getHabitCycleStatus",
+          inputs: [
+            {
+              name: "habitId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "lastCheckInCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "checkedInThisCycle",
+              type: "bool",
+              internalType: "bool",
             },
           ],
           stateMutability: "view",
@@ -1215,6 +1396,16 @@ const deployedContracts = {
             },
             {
               name: "lastSettled",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "lastCheckInCycle",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "lastSettledCycle",
               type: "uint256",
               internalType: "uint256",
             },
@@ -1686,6 +1877,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "MustSettlePreviousCycle",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "NoHabitsEligibleForSettlement",
           inputs: [],
         },
@@ -1696,7 +1892,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 32775517,
+      deployedOnBlock: 32779329,
     },
   },
 } as const;

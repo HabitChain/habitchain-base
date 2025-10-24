@@ -18,15 +18,36 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
 
   const publicClient = usePublicClient();
 
-  const { data: habit } = useScaffoldReadContract({
+  const { data: habit, refetch: refetchHabit } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "getHabit",
     args: [habitId],
+    watch: true,
   });
 
   const { data: checkInPeriod } = useScaffoldReadContract({
     contractName: "HabitChain",
     functionName: "checkInPeriod",
+    watch: true,
+  });
+
+  const { data: cycleInfo } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "getCycleInfo",
+    watch: true,
+  });
+
+  const { data: habitCycleStatus, refetch: refetchCycleStatus } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "getHabitCycleStatus",
+    args: [habitId],
+    watch: true,
+  });
+
+  const { data: cycleStartTime } = useScaffoldReadContract({
+    contractName: "HabitChain",
+    functionName: "cycleStartTime",
+    watch: true,
   });
 
   const { writeContractAsync: writeHabitChainAsync, isPending: isCheckingIn } = useScaffoldWriteContract({
@@ -74,8 +95,12 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
         functionName: "checkIn",
         args: [habitId],
       });
+      // Force refetch to get latest blockchain state
+      await Promise.all([refetchHabit(), refetchCycleStatus()]);
+      notification.success("Check-in successful!");
     } catch (error) {
       console.error("Error checking in:", error);
+      notification.error("Check-in failed");
     }
   };
 
@@ -90,6 +115,8 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
         functionName: "refundHabit",
         args: [habitId, parseEther(refundAmount)],
       });
+      // Force refetch to get latest blockchain state
+      await Promise.all([refetchHabit(), refetchCycleStatus()]);
       notification.success("Habit refunded successfully!");
       setIsRefundModalOpen(false);
       setRefundAmount("0.001");
@@ -107,6 +134,8 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
         functionName: "refundHabit",
         args: [habitId, defaultRefundAmount],
       });
+      // Force refetch to get latest blockchain state
+      await Promise.all([refetchHabit(), refetchCycleStatus()]);
       notification.success("Quick refund of 0.001 ETH completed!");
     } catch (error) {
       console.error("Error refunding habit:", error);
@@ -132,55 +161,62 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const checkInCount = habit.checkInCount.toString();
   const lastCheckIn = Number(habit.lastCheckIn);
   const now = localTimestamp; // Use local countdown timestamp for smooth updates
-  const timeSinceLastCheckIn = lastCheckIn > 0 ? now - lastCheckIn : 0;
-  const currentCheckInPeriod = checkInPeriod ? Number(checkInPeriod) : 86400; // Default to 24h if not loaded
-  const canCheckInAgain = lastCheckIn === 0 || timeSinceLastCheckIn >= currentCheckInPeriod;
+
+  // Cycle-based logic
+  const currentCycle = cycleInfo ? Number(cycleInfo[0]) : 0;
+  const cycleEndTime = cycleInfo ? Number(cycleInfo[2]) : 0;
+  const lastCheckInCycle = habitCycleStatus ? Number(habitCycleStatus[0]) : 0;
+  const checkedInThisCycle = habitCycleStatus ? habitCycleStatus[1] : false;
 
   // Detect slashed status: isActive but stakeAmount is 0
   const isSlashed = isActive && habit.stakeAmount === 0n;
 
-  // Format last check-in time
-  const formatLastCheckIn = () => {
-    if (lastCheckIn === 0) return "Never";
-    const periodHours = Math.floor(currentCheckInPeriod / 3600);
-    const hours = Math.floor(timeSinceLastCheckIn / 3600);
-    if (hours < 1) return "Less than 1 hour ago";
-    if (periodHours <= 24) return `${hours} hours ago`;
-    const days = Math.floor(hours / 24);
-    return `${days} day${days > 1 ? "s" : ""} ago`;
-  };
+  // Check if habit needs settlement before allowing check-in
+  const needsSettlement = () => {
+    if (!habit || !cycleStartTime || !checkInPeriod) return false;
+    if (isSlashed) return false; // Slashed habits don't need settlement check
 
-  // Calculate time until next check-in is available
-  const getTimeUntilNextCheckIn = () => {
-    if (lastCheckIn === 0) return "Now";
-    const timeUntilNextCheckIn = currentCheckInPeriod - timeSinceLastCheckIn;
-    if (timeUntilNextCheckIn <= 0) return "Now";
-    return formatDuration(timeUntilNextCheckIn);
-  };
+    // Calculate creation cycle
+    const creationCycle = Number((habit.createdAt - cycleStartTime) / checkInPeriod);
 
-  // Calculate check-in deadline (when habit gets slashed if not checked in)
-  const getCheckInDeadline = () => {
-    let deadlineTimestamp: number;
+    // If we're still in the creation cycle, no settlement needed
+    if (currentCycle <= creationCycle) return false;
 
-    if (lastCheckIn === 0 && Number(habit.lastSettled) > 0) {
-      // Refunded habit - deadline is from lastSettled
-      deadlineTimestamp = Number(habit.lastSettled) + currentCheckInPeriod;
-    } else if (lastCheckIn === 0) {
-      // Brand new habit - deadline is from creation
-      deadlineTimestamp = Number(habit.createdAt) + currentCheckInPeriod;
-    } else {
-      // Normal habit - deadline is from last check-in + period
-      deadlineTimestamp = lastCheckIn + currentCheckInPeriod;
+    const lastSettledCycle = habit.lastSettledCycle;
+
+    // Check if previous cycles need to be settled
+    // Special case: type(uint256).max is sentinel value meaning never settled
+    const MAX_UINT256 = 2n ** 256n - 1n;
+    if (lastSettledCycle === MAX_UINT256) {
+      return true; // Never settled, needs settlement
     }
 
-    const timeRemaining = deadlineTimestamp - now;
+    // Check if we've settled all cycles up to current - 1
+    if (lastSettledCycle < BigInt(currentCycle - 1)) {
+      return true; // Previous cycle not settled yet
+    }
 
-    return {
-      timestamp: deadlineTimestamp,
-      timeRemaining: Math.max(0, timeRemaining),
-      isExpired: timeRemaining <= 0,
-    };
+    return false;
   };
+
+  const isPendingSettlement = needsSettlement();
+  const canCheckInAgain = !checkedInThisCycle && !isPendingSettlement;
+
+  // Format last check-in cycle
+  const formatLastCheckIn = () => {
+    if (lastCheckIn === 0) return "Never";
+    if (lastCheckInCycle === 0) return "Never";
+    return `Cycle ${lastCheckInCycle}`;
+  };
+
+  // Calculate time remaining in current cycle
+  const getTimeRemainingInCycle = () => {
+    if (!cycleEndTime) return 0;
+    const timeRemaining = cycleEndTime - now;
+    return Math.max(0, timeRemaining);
+  };
+
+  const timeRemainingInCycle = getTimeRemainingInCycle();
 
   // Format duration in a human-readable way
   const formatDuration = (seconds: number) => {
@@ -195,8 +231,6 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
     const hours = Math.floor((seconds % 86400) / 3600);
     return `${days}d ${hours}h`;
   };
-
-  const deadline = getCheckInDeadline();
 
   // Determine card status
   const getStatusBadge = () => {
@@ -238,28 +272,38 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
             <span className="text-sm">{formatLastCheckIn()}</span>
           </div>
 
-          {/* Next check-in available */}
-          {isActive && !isSlashed && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm opacity-70">Next check-in in:</span>
-              <span className={`text-sm font-semibold ${canCheckInAgain ? "text-success" : "text-warning"}`}>
-                {getTimeUntilNextCheckIn()}
-              </span>
-            </div>
-          )}
-
-          {/* Check-in deadline */}
+          {/* Cycle information */}
           {isActive && !isSlashed && (
             <>
               <div className="flex justify-between items-center">
-                <span className="text-sm opacity-70">Time to deadline:</span>
-                <span className={`text-sm font-semibold ${deadline.isExpired ? "text-error" : "text-info"}`}>
-                  {deadline.isExpired ? "EXPIRED" : formatDuration(deadline.timeRemaining)}
+                <span className="text-sm opacity-70">Current cycle:</span>
+                <span className="text-sm font-semibold">Cycle {currentCycle}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm opacity-70">Checked in this cycle:</span>
+                <span className={`text-sm font-semibold ${checkedInThisCycle ? "text-success" : "text-warning"}`}>
+                  {checkedInThisCycle ? "✓ Yes" : "✗ No"}
                 </span>
               </div>
+
               <div className="flex justify-between items-center">
-                <span className="text-sm opacity-70">Check-in valid until:</span>
-                <span className="text-xs opacity-80">{new Date(deadline.timestamp * 1000).toLocaleString()}</span>
+                <span className="text-sm opacity-70">Cycle ends in:</span>
+                <span className="text-sm font-semibold text-info">{formatDuration(timeRemainingInCycle)}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm opacity-70">Cycle deadline:</span>
+                <span className="text-xs opacity-80">
+                  {cycleEndTime ? new Date(cycleEndTime * 1000).toLocaleString() : "Loading..."}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm opacity-70">Last settled cycle:</span>
+                <span className="text-xs opacity-80">
+                  {habit.lastSettledCycle === 2n ** 256n - 1n ? "Never" : `Cycle ${habit.lastSettledCycle.toString()}`}
+                </span>
               </div>
             </>
           )}
@@ -269,6 +313,13 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
         {isSlashed && (
           <div className="alert alert-error mb-4">
             <span className="text-sm">⚠️ This habit was slashed. Refund to reactivate.</span>
+          </div>
+        )}
+
+        {/* Pending Settlement Alert */}
+        {isActive && !isSlashed && isPendingSettlement && (
+          <div className="alert alert-warning mb-4">
+            <span className="text-sm">⏳ Pending settlement - please click "Natural Settle" first</span>
           </div>
         )}
 
@@ -285,10 +336,12 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
                   <span className="loading loading-spinner loading-sm"></span>
                   Checking in...
                 </>
+              ) : isPendingSettlement ? (
+                "⏳ Needs settlement first"
               ) : canCheckInAgain ? (
                 "✓ Check In"
               ) : (
-                "Already checked in this period"
+                "Already checked in this cycle"
               )}
             </button>
           </div>

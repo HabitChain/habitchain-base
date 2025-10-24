@@ -23,7 +23,9 @@ contract HabitChain {
         uint256 createdAt;
         uint256 lastCheckIn;
         uint256 checkInCount;
-        uint256 lastSettled; // Last time this habit was settled
+        uint256 lastSettled; // Last time this habit was settled (timestamp for compatibility)
+        uint256 lastCheckInCycle; // Which cycle user last checked in
+        uint256 lastSettledCycle; // Last cycle that was settled for this habit
         bool isActive;
         bool isSettled;
     }
@@ -33,6 +35,7 @@ contract HabitChain {
     IWETH public immutable weth;
     IAToken public immutable aWeth;
     address public immutable treasury;
+    uint256 public immutable cycleStartTime; // Global cycle start time (set at deployment)
 
     mapping(address => uint256) public userBalances; // Tracks aWETH balance (keeps earning yield in Aave)
     mapping(uint256 => Habit) public habits;
@@ -80,6 +83,7 @@ contract HabitChain {
     error HabitNotSlashed();
     error NoHabitsEligibleForSettlement();
     error CheckInPeriodExpired();
+    error MustSettlePreviousCycle();
 
     /**
      * @notice Constructor to initialize HabitChain with Aave integration
@@ -99,6 +103,15 @@ contract HabitChain {
         aWeth = IAToken(_aWeth);
         treasury = _treasury;
         nextHabitId = 1;
+        cycleStartTime = block.timestamp;
+    }
+
+    /**
+     * @notice Get the current cycle number
+     * @return Current cycle number based on time elapsed since deployment
+     */
+    function getCurrentCycle() public view returns (uint256) {
+        return (block.timestamp - cycleStartTime) / checkInPeriod;
     }
 
     /**
@@ -178,6 +191,18 @@ contract HabitChain {
 
         // Create habit
         uint256 habitId = nextHabitId++;
+        uint256 currentCycle = getCurrentCycle();
+        
+        // Initialize lastSettledCycle:
+        // - If created in Cycle 0: use sentinel value (max uint256) meaning "no prior cycles exist"
+        // - If created in Cycle N (N>0): use N-1 meaning "all cycles before N are implicitly settled"
+        uint256 initialLastSettledCycle;
+        if (currentCycle == 0) {
+            initialLastSettledCycle = type(uint256).max; // Sentinel: no cycles settled yet, but that's OK for Cycle 0
+        } else {
+            initialLastSettledCycle = currentCycle - 1; // Ready for current cycle
+        }
+        
         habits[habitId] = Habit({
             id: habitId,
             user: msg.sender,
@@ -189,6 +214,8 @@ contract HabitChain {
             lastCheckIn: 0,
             checkInCount: 0,
             lastSettled: 0,
+            lastCheckInCycle: 0, // Never checked in yet
+            lastSettledCycle: initialLastSettledCycle,
             isActive: true,
             isSettled: false
         });
@@ -203,6 +230,7 @@ contract HabitChain {
     /**
      * @notice Perform a check-in for a habit
      * @param habitId ID of the habit to check in
+     * @dev Requires that all previous cycles have been settled before allowing check-in
      */
     function checkIn(uint256 habitId) external {
         Habit storage habit = habits[habitId];
@@ -212,25 +240,32 @@ contract HabitChain {
         if (habit.user != msg.sender) revert NotHabitOwner();
         if (habit.stakeAmount == 0) revert HabitNotSlashed(); // Can't check in on slashed habit
 
-        // Check if already checked in within the check-in period (too soon)
-        if (habit.lastCheckIn > 0 && block.timestamp - habit.lastCheckIn < checkInPeriod) {
+        uint256 currentCycle = getCurrentCycle();
+        uint256 creationCycle = (habit.createdAt - cycleStartTime) / checkInPeriod;
+
+        // CRITICAL: Must settle previous cycle before checking in
+        // We only need to check settlement if we're past the creation cycle
+        // If we're in Cycle N and habit was created in Cycle C, we need cycles C through N-1 to be settled
+        if (currentCycle > creationCycle) {
+            // Special case: habits created in Cycle 0 have lastSettledCycle = type(uint256).max (sentinel)
+            // They MUST be settled before checking in during any future cycle
+            if (habit.lastSettledCycle == type(uint256).max) {
+                revert MustSettlePreviousCycle();
+            }
+            // Normal case: check if we've settled all cycles up to current - 1
+            if (habit.lastSettledCycle < currentCycle - 1) {
+                revert MustSettlePreviousCycle();
+            }
+        }
+
+        // Check if already checked in this cycle
+        // We need to handle the case where lastCheckInCycle is 0 (could mean Cycle 0 or never checked in)
+        if (habit.checkInCount > 0 && habit.lastCheckInCycle == currentCycle) {
             revert AlreadyCheckedInToday();
         }
 
-        // Check if grace period has expired (too late)
-        if (habit.lastCheckIn == 0 && habit.lastSettled > 0) {
-            // Refunded habit - check if grace period from refund has passed
-            if (block.timestamp >= habit.lastSettled + checkInPeriod) {
-                revert CheckInPeriodExpired();
-            }
-        } else if (habit.lastCheckIn == 0 && habit.lastSettled == 0) {
-            // Brand new habit - check if grace period from creation has passed
-            if (block.timestamp >= habit.createdAt + checkInPeriod) {
-                revert CheckInPeriodExpired();
-            }
-        }
-
         habit.lastCheckIn = block.timestamp;
+        habit.lastCheckInCycle = currentCycle;
         habit.checkInCount++;
 
         emit CheckInCompleted(habitId, msg.sender, block.timestamp, habit.checkInCount);
@@ -261,8 +296,18 @@ contract HabitChain {
         habit.stakeAmount = stakeAmount;
         habit.aTokenAmount = stakeAmount;
         habit.liquidityIndex = currentLiquidityIndex;
-        habit.lastCheckIn = 0; // Reset check-in (treat like new habit)
-        habit.lastSettled = block.timestamp; // Reset settlement timer to give fresh grace period
+        habit.lastCheckIn = 0; // Reset check-in timestamp (for display)
+        habit.lastCheckInCycle = 0; // Reset cycle (needs to check in this cycle)
+        habit.lastSettled = block.timestamp; // Reset settlement timer
+        
+        // Update lastSettledCycle to allow check-in in current cycle
+        uint256 currentCycle = getCurrentCycle();
+        if (currentCycle == 0) {
+            habit.lastSettledCycle = type(uint256).max; // Sentinel for Cycle 0
+        } else {
+            habit.lastSettledCycle = currentCycle - 1; // Ready for current cycle
+        }
+        
         // Habit remains active (isActive stays true)
 
         emit HabitRefunded(habitId, msg.sender, stakeAmount, block.timestamp);
@@ -282,38 +327,70 @@ contract HabitChain {
     /**
      * @notice Natural settlement - settles habits that have passed their deadline
      * @dev Can be called by anyone at any time
-     *      Only settles habits where the check-in deadline has been exceeded
-     *      Reverts if no habits are eligible for settlement
+     *      Settles all habits that have unsettled cycles (where lastSettledCycle < currentCycle - 1)
+     *      Uses global cycle-based logic for consistent settlement timing
      */
     function naturalSettle() external {
         uint256 totalSettled = 0;
         uint256 successfulHabits = 0;
         uint256 failedHabits = 0;
+        uint256 currentCycle = getCurrentCycle();
+
+        // Must be in cycle 1 or later to settle (can't settle during cycle 0)
+        if (currentCycle == 0) {
+            return;
+        }
 
         // Iterate through all habit IDs
         for (uint256 habitId = 1; habitId < nextHabitId; habitId++) {
             Habit storage habit = habits[habitId];
 
-            // Skip if habit doesn't exist, is inactive, already settled, or has been slashed (0 stake)
+            // Skip if habit doesn't exist, is inactive, permanently settled, or has been slashed (0 stake)
             if (habit.id == 0 || !habit.isActive || habit.isSettled || habit.stakeAmount == 0) {
                 continue;
             }
 
-            // Special case: Refunded habits (lastCheckIn reset to 0, lastSettled > 0)
-            // These need to wait for grace period before being eligible for settlement
-            if (habit.lastCheckIn == 0 && habit.lastSettled > 0) {
-                // Skip if grace period hasn't passed yet (strict inequality)
-                if (block.timestamp < habit.lastSettled + checkInPeriod) {
-                    continue;
-                }
+            uint256 creationCycle = (habit.createdAt - cycleStartTime) / checkInPeriod;
+
+            // Skip if habit was created in current cycle (not eligible yet)
+            if (creationCycle >= currentCycle) {
+                continue;
             }
 
-            // Determine success based on check-in status
-            // Success: checked in within the grace period
-            bool success = habit.lastCheckIn > 0 && (block.timestamp - habit.lastCheckIn) <= checkInPeriod;
+            // Check if this habit has unsettled cycles
+            // We can settle any cycle from (lastSettledCycle + 1) up to (currentCycle - 1)
+            // Special handling for type(uint256).max (habits created in Cycle 0 before first settlement)
+            bool needsSettlement;
+            uint256 cycleToSettle;
+            
+            if (habit.lastSettledCycle == type(uint256).max) {
+                // Never settled before - need to settle from creation cycle onwards
+                needsSettlement = true;
+                cycleToSettle = creationCycle;
+            } else if (habit.lastSettledCycle >= currentCycle - 1) {
+                // Already settled all past cycles
+                needsSettlement = false;
+                cycleToSettle = 0; // Unused
+            } else {
+                // Need to settle the next cycle
+                needsSettlement = true;
+                cycleToSettle = habit.lastSettledCycle + 1;
+            }
+            
+            if (!needsSettlement) {
+                continue;
+            }
+            
+            // Determine success: did they check in during the cycle being settled?
+            // Must check both cycle match AND that they actually checked in (checkInCount > 0)
+            // This handles the case where lastCheckInCycle = 0 could mean "never checked in" OR "checked in Cycle 0"
+            bool success = (habit.checkInCount > 0) && (habit.lastCheckInCycle == cycleToSettle);
 
-            // Process daily settlement (distributes funds but keeps habit active for next day)
+            // Process daily settlement (distributes funds but keeps habit active for next cycle)
             _dailySettleHabit(habitId, success);
+            
+            // Update the last settled cycle
+            habit.lastSettledCycle = cycleToSettle;
 
             totalSettled++;
             if (success) {
@@ -324,7 +401,6 @@ contract HabitChain {
         }
 
         // Only emit event if any habits were settled
-        // Note: We don't revert if no habits were settled, as this is a valid state
         if (totalSettled > 0) {
             emit NaturalSettlementCompleted(totalSettled, successfulHabits, failedHabits, block.timestamp);
         }
@@ -482,6 +558,37 @@ contract HabitChain {
      */
     function getTreasuryBalance() external view returns (uint256) {
         return treasuryBalance;
+    }
+
+    /**
+     * @notice Get current cycle information
+     * @return currentCycle Current cycle number
+     * @return cycleStart Timestamp when current cycle started
+     * @return cycleEnd Timestamp when current cycle ends
+     */
+    function getCycleInfo() external view returns (uint256 currentCycle, uint256 cycleStart, uint256 cycleEnd) {
+        currentCycle = getCurrentCycle();
+        cycleStart = cycleStartTime + (currentCycle * checkInPeriod);
+        cycleEnd = cycleStart + checkInPeriod;
+        return (currentCycle, cycleStart, cycleEnd);
+    }
+
+    /**
+     * @notice Get habit cycle status
+     * @param habitId ID of the habit
+     * @return lastCheckInCycle The cycle when habit was last checked in
+     * @return checkedInThisCycle Whether habit has been checked in during current cycle
+     */
+    function getHabitCycleStatus(uint256 habitId) external view returns (uint256 lastCheckInCycle, bool checkedInThisCycle) {
+        Habit memory habit = habits[habitId];
+        if (habit.id == 0) return (0, false);
+        
+        uint256 currentCycle = getCurrentCycle();
+        lastCheckInCycle = habit.lastCheckInCycle;
+        // Only checked in this cycle if lastCheckInCycle > 0 (not never-checked-in) AND matches current cycle
+        checkedInThisCycle = habit.lastCheckInCycle > 0 && habit.lastCheckInCycle >= currentCycle;
+        
+        return (lastCheckInCycle, checkedInThisCycle);
     }
 
     /**
