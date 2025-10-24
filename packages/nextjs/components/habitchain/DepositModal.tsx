@@ -12,7 +12,7 @@ interface DepositModalProps {
 }
 
 export const DepositModal = ({ isOpen, onClose }: DepositModalProps) => {
-  const [amount, setAmount] = useState("0.1");
+  const [amount, setAmount] = useState("0.01");
   const { address: connectedAddress } = useAccount();
 
   const { data: ethBalance } = useBalance({

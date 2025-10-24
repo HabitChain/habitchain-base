@@ -11,9 +11,10 @@ interface HabitCardProps {
 }
 
 export const HabitCard = ({ habitId }: HabitCardProps) => {
-  const [refundAmount, setRefundAmount] = useState("");
+  const [refundAmount, setRefundAmount] = useState("0.001");
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
-  const [blockchainTimestamp, setBlockchainTimestamp] = useState<number>(0);
+  const [localTimestamp, setLocalTimestamp] = useState<number>(0);
+  const [isQuickRefunding, setIsQuickRefunding] = useState(false);
 
   const publicClient = usePublicClient();
 
@@ -32,29 +33,40 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
     contractName: "HabitChain",
   });
 
-  // Fetch current blockchain timestamp
+  // Fetch current blockchain timestamp (reference point)
   useEffect(() => {
     const fetchBlockchainTimestamp = async () => {
       if (!publicClient) return;
 
       try {
         const block = await publicClient.getBlock({ blockTag: "latest" });
-        setBlockchainTimestamp(Number(block.timestamp));
+        const timestamp = Number(block.timestamp);
+        setLocalTimestamp(timestamp);
       } catch (error) {
         console.error("Error fetching blockchain timestamp:", error);
         // Fallback to local time if blockchain fetch fails
-        setBlockchainTimestamp(Math.floor(Date.now() / 1000));
+        const timestamp = Math.floor(Date.now() / 1000);
+        setLocalTimestamp(timestamp);
       }
     };
 
     fetchBlockchainTimestamp();
 
-    // Update timestamp more frequently for testing (every 1 second if period <= 10 seconds, otherwise 30 seconds)
-    const updateInterval = checkInPeriod && Number(checkInPeriod) <= 10 ? 1000 : 30000;
+    // Update blockchain timestamp periodically for sync (every 5 seconds for short periods, 30 seconds for long)
+    const updateInterval = checkInPeriod && Number(checkInPeriod) <= 60 ? 5000 : 30000;
     const interval = setInterval(fetchBlockchainTimestamp, updateInterval);
 
     return () => clearInterval(interval);
   }, [publicClient, checkInPeriod]);
+
+  // Local countdown timer (updates every second for smooth countdown)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLocalTimestamp(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleCheckIn = async () => {
     try {
@@ -80,10 +92,27 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
       });
       notification.success("Habit refunded successfully!");
       setIsRefundModalOpen(false);
-      setRefundAmount("");
+      setRefundAmount("0.001");
     } catch (error) {
       console.error("Error refunding habit:", error);
       notification.error("Failed to refund habit");
+    }
+  };
+
+  const handleQuickRefund = async () => {
+    try {
+      setIsQuickRefunding(true);
+      const defaultRefundAmount = parseEther("0.001");
+      await writeHabitChainAsync({
+        functionName: "refundHabit",
+        args: [habitId, defaultRefundAmount],
+      });
+      notification.success("Quick refund of 0.001 ETH completed!");
+    } catch (error) {
+      console.error("Error refunding habit:", error);
+      notification.error("Quick refund failed");
+    } finally {
+      setIsQuickRefunding(false);
     }
   };
 
@@ -102,7 +131,7 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
   const stakeAmount = formatEther(habit.stakeAmount);
   const checkInCount = habit.checkInCount.toString();
   const lastCheckIn = Number(habit.lastCheckIn);
-  const now = blockchainTimestamp; // Use blockchain timestamp instead of local time
+  const now = localTimestamp; // Use local countdown timestamp for smooth updates
   const timeSinceLastCheckIn = lastCheckIn > 0 ? now - lastCheckIn : 0;
   const currentCheckInPeriod = checkInPeriod ? Number(checkInPeriod) : 86400; // Default to 24h if not loaded
   const canCheckInAgain = lastCheckIn === 0 || timeSinceLastCheckIn >= currentCheckInPeriod;
@@ -120,6 +149,54 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
     const days = Math.floor(hours / 24);
     return `${days} day${days > 1 ? "s" : ""} ago`;
   };
+
+  // Calculate time until next check-in is available
+  const getTimeUntilNextCheckIn = () => {
+    if (lastCheckIn === 0) return "Now";
+    const timeUntilNextCheckIn = currentCheckInPeriod - timeSinceLastCheckIn;
+    if (timeUntilNextCheckIn <= 0) return "Now";
+    return formatDuration(timeUntilNextCheckIn);
+  };
+
+  // Calculate check-in deadline (when habit gets slashed if not checked in)
+  const getCheckInDeadline = () => {
+    let deadlineTimestamp: number;
+
+    if (lastCheckIn === 0 && Number(habit.lastSettled) > 0) {
+      // Refunded habit - deadline is from lastSettled
+      deadlineTimestamp = Number(habit.lastSettled) + currentCheckInPeriod;
+    } else if (lastCheckIn === 0) {
+      // Brand new habit - deadline is from creation
+      deadlineTimestamp = Number(habit.createdAt) + currentCheckInPeriod;
+    } else {
+      // Normal habit - deadline is from last check-in + period
+      deadlineTimestamp = lastCheckIn + currentCheckInPeriod;
+    }
+
+    const timeRemaining = deadlineTimestamp - now;
+
+    return {
+      timestamp: deadlineTimestamp,
+      timeRemaining: Math.max(0, timeRemaining),
+      isExpired: timeRemaining <= 0,
+    };
+  };
+
+  // Format duration in a human-readable way
+  const formatDuration = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}m`;
+    }
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    return `${days}d ${hours}h`;
+  };
+
+  const deadline = getCheckInDeadline();
 
   // Determine card status
   const getStatusBadge = () => {
@@ -160,6 +237,32 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
             <span className="text-sm opacity-70">Last check-in:</span>
             <span className="text-sm">{formatLastCheckIn()}</span>
           </div>
+
+          {/* Next check-in available */}
+          {isActive && !isSlashed && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm opacity-70">Next check-in in:</span>
+              <span className={`text-sm font-semibold ${canCheckInAgain ? "text-success" : "text-warning"}`}>
+                {getTimeUntilNextCheckIn()}
+              </span>
+            </div>
+          )}
+
+          {/* Check-in deadline */}
+          {isActive && !isSlashed && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm opacity-70">Time to deadline:</span>
+                <span className={`text-sm font-semibold ${deadline.isExpired ? "text-error" : "text-info"}`}>
+                  {deadline.isExpired ? "EXPIRED" : formatDuration(deadline.timeRemaining)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm opacity-70">Check-in valid until:</span>
+                <span className="text-xs opacity-80">{new Date(deadline.timestamp * 1000).toLocaleString()}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Slashed Alert */}
@@ -196,6 +299,14 @@ export const HabitCard = ({ habitId }: HabitCardProps) => {
           <div className="card-actions flex-col gap-2">
             <button className="btn btn-warning btn-block" onClick={() => setIsRefundModalOpen(true)}>
               💰 Refund Habit
+            </button>
+            <button
+              className="btn btn-warning btn-outline btn-block"
+              onClick={handleQuickRefund}
+              disabled={isQuickRefunding}
+              title="Quick refund 0.001 ETH"
+            >
+              {isQuickRefunding ? <span className="loading loading-spinner loading-sm"></span> : "Quick Refund"}
             </button>
           </div>
         )}

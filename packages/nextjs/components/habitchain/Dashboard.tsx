@@ -5,7 +5,7 @@ import { CreateHabitModal } from "./CreateHabitModal";
 import { DepositModal } from "./DepositModal";
 import { HabitCard } from "./HabitCard";
 import { WithdrawModal } from "./WithdrawModal";
-import { formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { usePublicClient } from "wagmi";
 import { Address } from "~~/components/scaffold-eth";
@@ -21,6 +21,8 @@ export const Dashboard = () => {
   const [isUpdatingPeriod, setIsUpdatingPeriod] = useState(false);
   const [blockchainTimestamp, setBlockchainTimestamp] = useState<number>(0);
   const [isMining, setIsMining] = useState(false);
+  const [isQuickDepositing, setIsQuickDepositing] = useState(false);
+  const [isQuickCreating, setIsQuickCreating] = useState(false);
 
   const publicClient = usePublicClient();
 
@@ -78,6 +80,53 @@ export const Dashboard = () => {
     args: [connectedAddress],
   });
 
+  const handleQuickDeposit = async () => {
+    if (!connectedAddress) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      setIsQuickDepositing(true);
+      const defaultAmount = parseEther("0.01");
+      await writeHabitChainAsync({
+        functionName: "deposit",
+        value: defaultAmount,
+      });
+      notification.success("Quick deposit of 0.01 ETH completed!");
+    } catch (error) {
+      console.error("Error depositing:", error);
+      notification.error("Quick deposit failed");
+    } finally {
+      setIsQuickDepositing(false);
+    }
+  };
+
+  const handleQuickCreateHabit = async () => {
+    if (!connectedAddress) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      setIsQuickCreating(true);
+      const randomNum = Math.floor(Math.random() * 1000);
+      const habitName = `Run in the morning ${randomNum}`;
+      const defaultStake = parseEther("0.001");
+
+      await writeHabitChainAsync({
+        functionName: "createHabit",
+        args: [habitName, defaultStake],
+      });
+      notification.success(`Quick habit "${habitName}" created!`);
+    } catch (error) {
+      console.error("Error creating habit:", error);
+      notification.error("Quick create habit failed");
+    } finally {
+      setIsQuickCreating(false);
+    }
+  };
+
   const handleNaturalSettle = async () => {
     if (!connectedAddress) {
       notification.error("Please connect your wallet");
@@ -110,7 +159,8 @@ export const Dashboard = () => {
         functionName: "setCheckInPeriod",
         args: [period],
       });
-      notification.success(`Check-in period updated to ${period === 5n ? "5 seconds" : "24 hours"}!`);
+      const periodText = period === 5n ? "5 seconds" : period === 30n ? "30 seconds" : "24 hours";
+      notification.success(`Check-in period updated to ${periodText}!`);
     } catch (error) {
       console.error("Error updating check-in period:", error);
       notification.error("Failed to update check-in period");
@@ -118,9 +168,6 @@ export const Dashboard = () => {
       setIsUpdatingPeriod(false);
     }
   };
-
-  // Check if currently in test mode
-  const isTestMode = checkInPeriod === 5n;
 
   const handleMineBlock = async () => {
     if (!publicClient) return;
@@ -225,18 +272,33 @@ export const Dashboard = () => {
               <h3 className="card-title text-sm">Check-in Period</h3>
               <div className="flex gap-1 mt-2">
                 <button
-                  className={`btn btn-xs ${isTestMode ? "btn-success" : "btn-outline"}`}
+                  className={`btn btn-xs ${checkInPeriod === 5n ? "btn-success" : "btn-outline"}`}
                   onClick={() => handleSetCheckInPeriod(5n)}
-                  disabled={isUpdatingPeriod || isTestMode}
+                  disabled={isUpdatingPeriod || checkInPeriod === 5n}
                 >
-                  {isUpdatingPeriod && isTestMode ? <span className="loading loading-spinner loading-xs"></span> : "5s"}
+                  {isUpdatingPeriod && checkInPeriod === 5n ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    "5s"
+                  )}
                 </button>
                 <button
-                  className={`btn btn-xs ${!isTestMode ? "btn-success" : "btn-outline"}`}
-                  onClick={() => handleSetCheckInPeriod(86400n)}
-                  disabled={isUpdatingPeriod || !isTestMode}
+                  className={`btn btn-xs ${checkInPeriod === 30n ? "btn-success" : "btn-outline"}`}
+                  onClick={() => handleSetCheckInPeriod(30n)}
+                  disabled={isUpdatingPeriod || checkInPeriod === 30n}
                 >
-                  {isUpdatingPeriod && !isTestMode ? (
+                  {isUpdatingPeriod && checkInPeriod === 30n ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    "30s"
+                  )}
+                </button>
+                <button
+                  className={`btn btn-xs ${checkInPeriod === 86400n ? "btn-success" : "btn-outline"}`}
+                  onClick={() => handleSetCheckInPeriod(86400n)}
+                  disabled={isUpdatingPeriod || checkInPeriod === 86400n}
+                >
+                  {isUpdatingPeriod && checkInPeriod === 86400n ? (
                     <span className="loading loading-spinner loading-xs"></span>
                   ) : (
                     "24h"
@@ -245,12 +307,15 @@ export const Dashboard = () => {
               </div>
               <div className="divider my-2"></div>
               <div className="text-xs opacity-70">🕒 {new Date(blockchainTimestamp * 1000).toLocaleString()}</div>
-              <div className="flex gap-1 mt-2">
+              <div className="flex gap-1 mt-2 flex-wrap">
                 <button className="btn btn-xs btn-outline" onClick={handleMineBlock} disabled={isMining}>
                   {isMining ? <span className="loading loading-spinner loading-xs"></span> : "⛏️"}
                 </button>
                 <button className="btn btn-xs btn-outline" onClick={() => handleAdvanceTime(5)} disabled={isMining}>
                   {isMining ? <span className="loading loading-spinner loading-xs"></span> : "+5s"}
+                </button>
+                <button className="btn btn-xs btn-outline" onClick={() => handleAdvanceTime(30)} disabled={isMining}>
+                  {isMining ? <span className="loading loading-spinner loading-xs"></span> : "+30s"}
                 </button>
                 <button className="btn btn-xs btn-outline" onClick={() => handleAdvanceTime(60)} disabled={isMining}>
                   {isMining ? <span className="loading loading-spinner loading-xs"></span> : "+1m"}
@@ -262,16 +327,35 @@ export const Dashboard = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 mb-8 flex-wrap">
+      <div className="flex gap-3 mb-8 flex-wrap items-center">
         <button className="btn btn-success" onClick={() => setIsDepositModalOpen(true)}>
           💰 Deposit ETH
         </button>
+        <button
+          className="btn btn-success btn-outline"
+          onClick={handleQuickDeposit}
+          disabled={isQuickDepositing}
+          title="Quick deposit 0.01 ETH"
+        >
+          {isQuickDepositing ? <span className="loading loading-spinner loading-sm"></span> : "Quick deposit"}
+        </button>
+
         <button className="btn btn-warning" onClick={() => setIsWithdrawModalOpen(true)}>
           💸 Withdraw ETH
         </button>
+
         <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
           ➕ Create New Habit
         </button>
+        <button
+          className="btn btn-primary btn-outline"
+          onClick={handleQuickCreateHabit}
+          disabled={isQuickCreating}
+          title="Quick create habit with default values"
+        >
+          {isQuickCreating ? <span className="loading loading-spinner loading-sm"></span> : "Quick new habit"}
+        </button>
+
         <button className="btn btn-error" onClick={handleNaturalSettle} disabled={isSettling}>
           {isSettling ? (
             <>
@@ -282,6 +366,16 @@ export const Dashboard = () => {
             "⚖️ Natural Settle"
           )}
         </button>
+      </div>
+
+      {/* Info Text */}
+      <div className="mb-6">
+        <p className="text-xs opacity-60 max-w-2xl">
+          💡 <span className="font-semibold">Check-in cycles are global</span> (
+          {checkInPeriod ? `${Number(checkInPeriod)}s` : "loading..."} period). After creating or checking in, you must
+          wait one period before checking in again. Natural Settle processes habits past their deadline. Quick buttons
+          use default values for instant actions.
+        </p>
       </div>
 
       {/* Habits Grid */}

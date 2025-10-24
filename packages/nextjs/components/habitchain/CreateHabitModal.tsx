@@ -13,7 +13,7 @@ interface CreateHabitModalProps {
 
 export const CreateHabitModal = ({ isOpen, onClose }: CreateHabitModalProps) => {
   const [habitName, setHabitName] = useState("Run in the morning");
-  const [stakeAmount, setStakeAmount] = useState("0.01");
+  const [stakeAmount, setStakeAmount] = useState("0.001");
   const { address: connectedAddress } = useAccount();
 
   const { writeContractAsync: writeHabitChainAsync, isPending } = useScaffoldWriteContract({
