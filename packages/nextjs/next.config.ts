@@ -14,11 +14,13 @@ const nextConfig: NextConfig = {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
   },
-  // Enable standalone output for Docker deployment
+  // Enable standalone output for Docker deployment only
+  // Don't use standalone for Cloudflare Pages
   output:
     process.env.NODE_ENV === "production" &&
       !process.env.NEXT_PUBLIC_IPFS_BUILD &&
-      !process.env.NEXT_PUBLIC_GITHUB_PAGES
+      !process.env.NEXT_PUBLIC_GITHUB_PAGES &&
+      !process.env.CF_PAGES
       ? "standalone"
       : undefined,
 };
