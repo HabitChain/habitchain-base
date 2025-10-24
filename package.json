@@ -8,7 +8,6 @@
     "account:generate": "pnpm foundry:generate",
     "account:import": "pnpm foundry:account-import",
     "account:reveal-pk": "pnpm --filter @se-2/foundry run account:reveal-pk",
-    "build": "pnpm --filter @se-2/nextjs run build:cloudflare",
     "chain": "pnpm foundry:chain",
     "compile": "pnpm foundry:compile",
     "deploy": "pnpm foundry:deploy",
