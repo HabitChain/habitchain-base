@@ -62,13 +62,30 @@ pnpm mine
 ```
 
 ### Deployment
+ 
+Note: don't deploy to testnet or mainnet without asking first.
+Local devnet is fine.
 
 ```bash
-# Deploy to Base Sepolia testnet
+# Deploy to Base Sepolia using private key from env (recommended for CI/CD)
+pnpm deploy:testnet
+# or
+pnpm deploy:pk --network baseSepolia
+
+# Deploy using Foundry keystore (interactive)
 pnpm deploy --network baseSepolia
 
 # Deploy to Base mainnet
-pnpm deploy --network base
+pnpm deploy:pk --network base
+```
+
+**Environment Setup for Private Key Deployment**:
+
+Create `packages/foundry/.env`:
+```bash
+DEPLOYER_PRIVATE_KEY=your_private_key_without_0x_prefix
+BASESCAN_API_KEY=your_basescan_api_key
+ALCHEMY_API_KEY=your_alchemy_api_key
 ```
 
 ## Architecture

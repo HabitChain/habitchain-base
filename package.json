@@ -12,6 +12,8 @@
     "chain": "pnpm foundry:chain",
     "compile": "pnpm foundry:compile",
     "deploy": "pnpm foundry:deploy",
+    "deploy:pk": "pnpm --filter @se-2/foundry run deploy:pk",
+    "deploy:testnet": "pnpm --filter @se-2/foundry run deploy:pk --network baseSepolia",
     "flatten": "pnpm foundry:flatten",
     "fork": "pnpm foundry:fork",
     "fork:fast": "pnpm --filter @se-2/foundry run fork:fast",

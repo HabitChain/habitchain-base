@@ -60,52 +60,69 @@ Get Base Sepolia ETH from:
 
 ### 2. Set Up Deployer Account
 
-```bash
-cd packages/foundry
+You have two options for managing your private key:
 
-# Generate a new keystore (if you don't have one)
-yarn generate
-
-# Or import existing private key
-yarn import
-```
-
-The default keystore is `scaffold-eth-default` with no password.
-
-### 3. Configure Environment
+#### Option A: Using Private Key Directly (Recommended for CI/CD)
 
 Create `packages/foundry/.env`:
 
 ```bash
-# Base Sepolia RPC (or use public RPC)
-BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+# Your private key (WITHOUT 0x prefix)
+DEPLOYER_PRIVATE_KEY=your_private_key_here_without_0x
 
 # For contract verification
 BASESCAN_API_KEY=your_basescan_api_key_here
 
-# Deployer account (optional, defaults to scaffold-eth-default)
-ETH_KEYSTORE_ACCOUNT=scaffold-eth-default
+# Optional: Alchemy API key for better RPC reliability
+ALCHEMY_API_KEY=your_alchemy_api_key_here
 ```
 
-### 4. Deploy to Base Sepolia
+**⚠️ SECURITY WARNING**: 
+- Never commit `.env` file to git (it's in `.gitignore` by default)
+- Use this method for production deployments and CI/CD pipelines
+- Store private keys in secure environment variable managers (GitHub Secrets, Vercel Env, etc.)
+
+#### Option B: Using Foundry Keystore (Interactive)
 
 ```bash
 cd packages/foundry
 
-# Deploy HabitChain to Base Sepolia
-forge script script/Deploy.s.sol:DeployScript \
-  --rpc-url baseSepolia \
-  --broadcast \
-  --verify
+# Generate a new keystore (if you don't have one)
+pnpm generate
+
+# Or import existing private key
+pnpm import
 ```
 
-Or using the yarn command:
+The default keystore is `scaffold-eth-default` with no password (for localhost only).
+
+### 3. Deploy to Base Sepolia
+
+#### Using Private Key (Option A):
 
 ```bash
-yarn deploy --network baseSepolia
+# From project root
+pnpm deploy:testnet
+
+# Or to specify different network
+pnpm deploy:pk --network baseSepolia
 ```
 
-### 5. Verify Deployment
+This will:
+1. Deploy HabitChain to Base Sepolia
+2. Automatically generate TypeScript ABIs
+3. Update the frontend's `deployedContracts.ts` file
+
+#### Using Foundry Keystore (Option B):
+
+```bash
+# From project root
+pnpm deploy --network baseSepolia
+
+# You'll be prompted to select a keystore account
+```
+
+### 4. Verify Deployment
 
 After deployment, you'll see:
 ```
@@ -120,13 +137,36 @@ Check on Basescan:
 - Contract: https://sepolia.basescan.org/address/CONTRACT_ADDRESS
 - Transactions: https://sepolia.basescan.org/address/CONTRACT_ADDRESS#internaltx
 
-### 6. Update Frontend
+### 5. Frontend Configuration
 
-The deployment automatically updates `packages/nextjs/contracts/deployedContracts.ts`.
+The frontend is **pre-configured** to use Base Sepolia testnet by default (see `packages/nextjs/scaffold.config.ts`).
 
-Restart the frontend:
+The deployment automatically:
+1. Updates `packages/nextjs/contracts/deployedContracts.ts` with your deployed contract address
+2. Generates TypeScript types for type-safe contract interactions
+
+**Your frontend is now ready to deploy!**
+
+Start the development server locally:
 ```bash
-yarn start
+pnpm start
+```
+
+Or build and deploy to production:
+```bash
+# Build the frontend
+pnpm next:build
+
+# Deploy to Vercel (or your preferred hosting)
+pnpm vercel
+
+# Or deploy to Cloudflare Pages
+pnpm deploy:cloudflare
+```
+
+**Note**: If you want to add localhost support back for development, update `scaffold.config.ts`:
+```typescript
+targetNetworks: [chains.hardhat, chains.baseSepolia]
 ```
 
 ## Base Mainnet Deployment
