@@ -1,0 +1,4 @@
+name = "habitchain"
+compatibility_date = "2025-10-24"
+pages_build_output_dir = ".vercel/output/static"
+
