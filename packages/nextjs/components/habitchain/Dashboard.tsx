@@ -337,6 +337,17 @@ export const Dashboard = () => {
                   )}
                 </button>
                 <button
+                  className={`btn btn-xs ${checkInPeriod === 60n ? "btn-success" : "btn-outline"}`}
+                  onClick={() => handleSetCheckInPeriod(60n)}
+                  disabled={isUpdatingPeriod || checkInPeriod === 60n}
+                >
+                  {isUpdatingPeriod && checkInPeriod === 60n ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    "1m"
+                  )}
+                </button>
+                <button
                   className={`btn btn-xs ${checkInPeriod === 86400n ? "btn-success" : "btn-outline"}`}
                   onClick={() => handleSetCheckInPeriod(86400n)}
                   disabled={isUpdatingPeriod || checkInPeriod === 86400n}
