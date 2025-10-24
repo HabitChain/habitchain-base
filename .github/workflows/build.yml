@@ -40,9 +40,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Compile smart contracts
-        run: pnpm compile
-
       - name: Build frontend
         run: |
           cd packages/nextjs
