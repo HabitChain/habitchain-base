@@ -53,7 +53,7 @@ contract DeployHabitChain is ScaffoldETHDeploy {
             return NetworkConfig({
                 aavePool: 0x07eA79F68B2B3df564D0A34F8e19D9B1e339814b,
                 weth: 0x4200000000000000000000000000000000000006,
-                aWeth: 0x9c8Aa5E801E3E072e0eD1BE4A2dE836E20aCABd1
+                aWeth: 0x96e32dE4B1d1617B8c2AE13a88B9cC287239b13f
             });
         }
         // Local fork - use Base Mainnet addresses
