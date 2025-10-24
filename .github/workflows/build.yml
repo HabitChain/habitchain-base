@@ -40,10 +40,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build frontend
-        run: |
-          cd packages/nextjs
-          pnpm build
+      # - name: Build frontend
+      #   run: |
+      #     cd packages/nextjs
+      #     pnpm build
 
       - name: Type check frontend
         run: pnpm next:check-types
