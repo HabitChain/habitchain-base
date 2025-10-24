@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : `http://localhost:${process.env.PORT || 3000}`;
-const titleTemplate = "%s | Scaffold-ETH 2";
+const titleTemplate = "%s | HabitChain";
 
 export const getMetadata = ({
   title,
@@ -45,12 +45,12 @@ export const getMetadata = ({
     },
     icons: {
       icon: [
-        {
-          url: "/favicon.png",
-          sizes: "32x32",
-          type: "image/png",
-        },
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     },
+    manifest: "/site.webmanifest",
   };
 };

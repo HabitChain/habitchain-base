@@ -6,8 +6,9 @@ import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Scaffold-ETH 2 App",
-  description: "Built with 🏗 Scaffold-ETH 2",
+  title: "HabitChain",
+  description:
+    "Habits with real skin-in-the-game. Stake ETH on your habits, earn yield through Aave V3, and achieve your goals with blockchain accountability.",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
