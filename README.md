@@ -11,6 +11,7 @@ By adding real consequences and immediate feedback, HabitChain closes the “mot
 
 ## Details
 
+- Submission: https://devfolio.co/projects/habitchain-03ee
 - Network: Base Sepolia Testnet
 - Address: [0x6F7DB63504902906B48193bB61771dF5c67eC2C2](https://sepolia.basescan.org/address/0x6F7DB63504902906B48193bB61771dF5c67eC2C2)
 - ABI: [https://github.com/HabitChain/habitchain-base/blob/2b86b7db15862e9a20ce2c2c4e2c461840feec26/packages/nextjs/contracts/deployedContracts.ts#L956](https://github.com/HabitChain/habitchain-base/blob/2b86b7db15862e9a20ce2c2c4e2c461840feec26/packages/nextjs/contracts/deployedContracts.ts#L956)
